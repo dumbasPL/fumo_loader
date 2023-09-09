@@ -1,7 +1,14 @@
 #pragma once
 #include <ntifs.h>
 #include <windef.h>
+#include <wdm.h>
 #define DEBUG
+
+#ifdef DEBUG
+#define POOL_TAG 'OMUF' // FUMO
+#else
+#define POOL_TAG 'enoN' // None
+#endif
 
 #ifdef DEBUG
 #define Log(format, ...) DbgPrint("[FUMO] " format "\n", ##__VA_ARGS__)
@@ -18,6 +25,14 @@ NTKERNELAPI NTSTATUS ObReferenceObjectByName(
   __in KPROCESSOR_MODE AccessMode,
   __inout_opt PVOID ParseContext,
   __out PVOID* Object
+);
+
+NTKERNELAPI PUCHAR NTAPI PsGetProcessImageFileName(
+  _In_ PEPROCESS Process
+);
+
+NTKERNELAPI PVOID MmGetVirtualForPhysical(
+  __in PHYSICAL_ADDRESS PhysicalAddress
 );
 
 typedef NTSTATUS(*DevCtrlPtr)(PDEVICE_OBJECT, PIRP Irp);
