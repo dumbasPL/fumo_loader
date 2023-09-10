@@ -1,5 +1,6 @@
 #include "driver.h"
 #include "memory.h"
+#include "thread.h"
 #include <fomo_common.h>
 
 DRIVER_INITIALIZE DriverEntry;
@@ -109,12 +110,63 @@ NTSTATUS Hk_DeviceControl(PDEVICE_OBJECT DeviceObject, PIRP Irp) {
             break;
         }
 
+        KAPC_STATE apcState;
+        KeStackAttachProcess(pProcess, &apcState);
+
         if (!ExposeKernelMemoryToProcess(pProcess, input->Address, input->Size)) {
+            Log("Failed to expose kernel memory to process");
+            KeUnstackDetachProcess(&apcState);
             ObDereferenceObject(pProcess);
             status = STATUS_UNSUCCESSFUL;
             break;
         }
 
+        KeUnstackDetachProcess(&apcState);
+        ObDereferenceObject(pProcess);
+
+        bytes = 0;
+        status = STATUS_SUCCESS;
+        break;
+    }
+    case IO_EXECUTE_REQUEST: {
+        if (stack->Parameters.DeviceIoControl.InputBufferLength != sizeof(IO_EXECUTE_REQUEST_DATA)) {
+            status = STATUS_INVALID_PARAMETER;
+            break;
+        }
+        PIO_EXECUTE_REQUEST_DATA input = (PIO_EXECUTE_REQUEST_DATA)Irp->AssociatedIrp.SystemBuffer;
+
+        Log("IO_EXECUTE_REQUEST received with pid %d, address 0x%p, Argument 0x%p", input->Pid, input->Address, input->Argument);
+
+        PEPROCESS pProcess = NULL;
+        status = PsLookupProcessByProcessId((HANDLE)input->Pid, &pProcess);
+        if (!NT_SUCCESS(status)) {
+            Log("Failed to lookup process by pid (0x%08X)", status);
+            break;
+        }
+
+        KAPC_STATE apcState;
+        KeStackAttachProcess(pProcess, &apcState);
+
+        PETHREAD pThread = NULL;
+        status = FindProcessThread(pProcess, &pThread);
+        if (!NT_SUCCESS(status)) {
+            Log("Failed to find process thread (0x%08X)", status);
+            KeUnstackDetachProcess(&apcState);
+            ObDereferenceObject(pProcess);
+            break;
+        }
+
+        status = QueueUserApc(pThread, input->Address, input->Argument);
+        if (!NT_SUCCESS(status)) {
+            Log("Failed to queue user apc (0x%08X)", status);
+            KeUnstackDetachProcess(&apcState);
+            ObDereferenceObject(pThread);
+            ObDereferenceObject(pProcess);
+            break;
+        }
+
+        KeUnstackDetachProcess(&apcState);
+        ObDereferenceObject(pThread);
         ObDereferenceObject(pProcess);
 
         bytes = 0;

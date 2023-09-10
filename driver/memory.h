@@ -1,5 +1,4 @@
 #pragma once
-#include <ntifs.h>
 #include "driver.h"
 
 typedef unsigned long long uint64_t;
