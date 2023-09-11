@@ -10,4 +10,5 @@ find_package(WDK REQUIRED)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 add_subdirectory(driver)
+add_subdirectory(loader)
 add_subdirectory(client)
