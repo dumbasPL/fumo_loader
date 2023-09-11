@@ -6,14 +6,16 @@
 DRIVER_INITIALIZE DriverEntry;
 DRIVER_UNLOAD DriverUnload;
 
-void* gOriginalDispatchFunctionArray[IRP_MJ_MAXIMUM_FUNCTION];
+PVOID gOriginalDispatchFunctionArray[IRP_MJ_MAXIMUM_FUNCTION];
 
-NTSTATUS DriverEntry(_In_ PDRIVER_OBJECT DriverObject, _In_ PUNICODE_STRING RegistryPath) {
+NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath) {
     UNREFERENCED_PARAMETER(RegistryPath);
     UNREFERENCED_PARAMETER(DriverObject);
 
     RTL_OSVERSIONINFOW version = { 0 };
     RtlGetVersion(&version);
+    
+    // Windows 10 2004/20H1 (19041) or higher
     if (version.dwMajorVersion != 10 || version.dwBuildNumber < 19041) {
         Log("Unsupported OS version: %d.%d.%d", version.dwMajorVersion, version.dwMinorVersion, version.dwBuildNumber);
         return STATUS_NOT_SUPPORTED;
@@ -21,14 +23,13 @@ NTSTATUS DriverEntry(_In_ PDRIVER_OBJECT DriverObject, _In_ PUNICODE_STRING Regi
 
     SetHook(TRUE);
 
-    Log("loaded");
-
+    Log("loaded version %d running on %d.%d %d", FUMO_DRIVER_VERSION, version.dwMajorVersion, version.dwMinorVersion, version.dwBuildNumber);
     return STATUS_SUCCESS;
 }
 
 NTSTATUS SetHook(BOOL setHook) {
     UNICODE_STRING driverName;
-    RtlInitUnicodeString(&driverName, L"\\Driver\\Null");
+    RtlInitUnicodeString(&driverName, FUMO_HOOKED_DRIVER_NAME);
 
     PDRIVER_OBJECT DriverObject = NULL;
     NTSTATUS status = ObReferenceObjectByName(&driverName, OBJ_CASE_INSENSITIVE, NULL, 0,
@@ -40,16 +41,14 @@ NTSTATUS SetHook(BOOL setHook) {
     }
 
     if (setHook) {
-        Log("Hooking Null driver major funcs...");
-        
+        Log("Hooking %ws major funcs", FUMO_HOOKED_DRIVER_NAME);
         RtlCopyMemory(gOriginalDispatchFunctionArray, DriverObject->MajorFunction, sizeof(gOriginalDispatchFunctionArray));
-        
         DriverObject->MajorFunction[IRP_MJ_DEVICE_CONTROL] = Hk_DeviceControl;
-
-        Log("Hooked Null driver major functions...");
+        Log("Hooked %ws major funcs", FUMO_HOOKED_DRIVER_NAME);
     } else {
+        Log("Unhooking %ws major funcs", FUMO_HOOKED_DRIVER_NAME);
         RtlCopyMemory(DriverObject->MajorFunction, gOriginalDispatchFunctionArray, sizeof(gOriginalDispatchFunctionArray));
-        Log("Unhooked Null driver major functions...");
+        Log("Unhooked %ws major funcs", FUMO_HOOKED_DRIVER_NAME);
     }
 
     ObDereferenceObject(DriverObject);
@@ -63,6 +62,26 @@ NTSTATUS Hk_DeviceControl(PDEVICE_OBJECT DeviceObject, PIRP Irp) {
 
     switch (stack->Parameters.DeviceIoControl.IoControlCode)
     {
+    case IO_VERSION_REQUEST: {
+        if (stack->Parameters.DeviceIoControl.OutputBufferLength != sizeof(IO_VERSION_RESPONSE_DATA)) {
+            status = STATUS_INVALID_PARAMETER;
+            break;
+        }
+        PIO_VERSION_RESPONSE_DATA output = (PIO_VERSION_RESPONSE_DATA)Irp->AssociatedIrp.SystemBuffer;
+
+        Log("IO_VERSION_REQUEST received");
+
+        output->Version = FUMO_DRIVER_VERSION;
+        bytes = sizeof(IO_VERSION_RESPONSE_DATA);
+        status = STATUS_SUCCESS;
+        break;
+    }
+    case IO_UNLOAD_REQUEST: {
+        Log("IO_UNLOAD_REQUEST received");
+        SetHook(FALSE);
+        status = STATUS_SUCCESS;
+        break;
+    }
     case IO_ALLOC_REQUEST: {
         if (stack->Parameters.DeviceIoControl.InputBufferLength != sizeof(IO_ALLOC_REQUEST_DATA)) {
             status = STATUS_INVALID_PARAMETER;
