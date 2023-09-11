@@ -405,4 +405,8 @@ NTKERNELAPI BOOLEAN NTAPI KeTestAlertThread(
     IN KPROCESSOR_MODE AlertMode
 );
 
+NTKERNELAPI VOID NTAPI KeFlushCurrentTbImmediately();
+
+NTKERNELAPI VOID NTAPI KeFlushEntireTb();
+
 __declspec(dllimport) POBJECT_TYPE *IoDriverObjectType;

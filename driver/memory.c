@@ -134,5 +134,8 @@ BOOL ExposeKernelMemoryToProcess(PEPROCESS pProcess, PVOID Address, SIZE_T Size)
       Pti.Pte->user = TRUE;
   }
 
+  KeFlushEntireTb();
+  KeInvalidateAllCaches();
+
   return success;
 }
