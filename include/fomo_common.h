@@ -1,5 +1,9 @@
 #pragma once
 
+// Windows 10 2004/20H1 (19041) or higher
+#define MIN_OS_MAJOR_VERSION 10
+#define MIN_OS_BUILD_NUMBER 19041
+
 #define FUMO_DRIVER_VERSION 0x00000001
 #define FUMO_HOOKED_DRIVER_NAME L"\\Driver\\Null"
 #define FUMO_HOOKED_DRIVER_NAME_USER L"\\\\.\\NUL"

@@ -14,9 +14,7 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath) 
 
     RTL_OSVERSIONINFOW version = { 0 };
     RtlGetVersion(&version);
-    
-    // Windows 10 2004/20H1 (19041) or higher
-    if (version.dwMajorVersion != 10 || version.dwBuildNumber < 19041) {
+    if (version.dwMajorVersion < MIN_OS_MAJOR_VERSION || version.dwBuildNumber < MIN_OS_BUILD_NUMBER) {
         Log("Unsupported OS version: %d.%d.%d", version.dwMajorVersion, version.dwMinorVersion, version.dwBuildNumber);
         return STATUS_NOT_SUPPORTED;
     }
