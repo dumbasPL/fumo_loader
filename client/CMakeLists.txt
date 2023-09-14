@@ -1,3 +1,5 @@
+CPMAddPackage("gh:dumbasPL/libKDU#main")
+
 add_executable(fumo client.cpp util.cpp)
 
 target_include_directories(fumo PRIVATE ${CMAKE_SOURCE_DIR}/Include)
