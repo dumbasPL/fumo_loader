@@ -19,7 +19,7 @@ CPMAddPackage("gh:dumbasPL/libKDU#main")
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
-add_subdirectory(shellcode_extractor)
+add_subdirectory(shellcode)
 add_subdirectory(driver)
 add_subdirectory(loader)
 add_subdirectory(client)
