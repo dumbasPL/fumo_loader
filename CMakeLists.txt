@@ -11,6 +11,7 @@ if(MSVC)
     set(CMAKE_VS_MSBUILD_COMMAND "${CMAKE_VS_MSBUILD_COMMAND} /p:CL_MPCount=${PROCESSOR_COUNT} /m")
 endif()
 
+set(CPM_SOURCE_CACHE "${CMAKE_SOURCE_DIR}/.cache/cpm")
 include(cmake/CPM.cmake)
 
 add_subdirectory(shellcode)
