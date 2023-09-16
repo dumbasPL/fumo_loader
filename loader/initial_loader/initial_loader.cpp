@@ -74,10 +74,11 @@ __forceinline int map_encrypted_image(ULONG_PTR base, PIMAGE_SECTION_HEADER data
             auto relocation = (PWORD)((ULONG_PTR)base_relocation + sizeof(IMAGE_BASE_RELOCATION));
             auto number_of_relocations = (base_relocation->SizeOfBlock - sizeof(IMAGE_BASE_RELOCATION)) / sizeof(WORD);
             for (auto i = 0; i < number_of_relocations; i++) {
-                if (relocation[i] >> 12 == IMAGE_REL_BASED_DIR64) {
+                auto type = relocation[i] >> 12;
+                if (type == IMAGE_REL_BASED_DIR64) {
                     auto address = (PULONG_PTR)(new_image_base + base_relocation->VirtualAddress + (relocation[i] & 0xFFF));
                     *address += delta;
-                } else
+                } else if (type != IMAGE_REL_BASED_ABSOLUTE)
                     EXIT_WITH_ERROR(ERR_FAILED_TO_RELOCATE_IMAGE, "Failed to relocate image");
             }
             base_relocation = (PIMAGE_BASE_RELOCATION)((ULONG_PTR)base_relocation + base_relocation->SizeOfBlock);
