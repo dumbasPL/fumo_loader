@@ -2,7 +2,7 @@ CPMAddPackage("gh:dumbasPL/libKDU#main")
 
 add_custom_command(
     DEPENDS resource_generator fumo_drv
-    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/Resources/fumo_drv.cpp
+    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/Resources/fumo_drv_data.cpp ${CMAKE_CURRENT_BINARY_DIR}/Resources/fumo_drv_data.h
     COMMAND resource_generator $<TARGET_FILE:fumo_drv> fumo_drv_data ${CMAKE_CURRENT_BINARY_DIR}/Resources
 )
 

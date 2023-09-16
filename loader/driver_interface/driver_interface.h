@@ -15,7 +15,7 @@ private:
     DriverInterface& operator=(const DriverInterface&) = delete;
 public:
     static std::optional<std::reference_wrapper<DriverInterface>> Open(LPCWSTR lpFileName);
-    ULONG GetVersion();
+    std::optional<ULONG> GetVersion();
     VOID Unload();
     PVOID AllocateKernelMemory(ULONG size);
     BOOL ExposeKernelMemory(ULONG pid, PVOID address, ULONG size);

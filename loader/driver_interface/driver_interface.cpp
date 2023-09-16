@@ -8,13 +8,13 @@ std::optional<std::reference_wrapper<fumo::DriverInterface>> fumo::DriverInterfa
     return std::optional<std::reference_wrapper<fumo::DriverInterface>>(*new DriverInterface(hDevice));
 }
 
-ULONG fumo::DriverInterface::GetVersion() {
+std::optional<ULONG> fumo::DriverInterface::GetVersion() {
     IO_VERSION_RESPONSE_DATA version_response = {0};
     if (!DeviceIoControl(hDevice, IO_VERSION_REQUEST, 
         nullptr, 0, 
         &version_response, sizeof(version_response), 
         nullptr, nullptr)) {
-        return 0;
+        return std::nullopt;
     }
     return version_response.Version;
 }
