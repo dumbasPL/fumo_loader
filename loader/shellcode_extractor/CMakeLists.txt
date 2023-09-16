@@ -1,0 +1,4 @@
+add_executable(shellcode_extractor shellcode_extractor.cpp)
+target_compile_features(shellcode_extractor PUBLIC c_std_17 cxx_std_20)
+target_compile_definitions(shellcode_extractor PRIVATE UNICODE _UNICODE)
+set_target_properties(shellcode_extractor PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})

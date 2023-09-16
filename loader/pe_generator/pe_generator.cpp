@@ -8,23 +8,28 @@
 #include <optional>
 #include "imports.h"
 #include "bootstrap.h"
-#include <lazy_importer.hpp>
+
+NTSYSAPI ULONG RtlRandomEx(PULONG Seed);
+auto fnRtlRandomEx = []() {
+    return (decltype(&RtlRandomEx))GetProcAddress(GetModuleHandleW(L"ntdll.dll"), "RtlRandomEx");
+}();
 
 std::optional<std::vector<BYTE>> read_file(std::string path);
 void randomize_section_name(PIMAGE_SECTION_HEADER section_header, PULONG seed);
 DWORD GetAlignedSize(DWORD size, DWORD alignment);
 void encrypt_buffer(PBYTE buffer, DWORD size, ULONG_PTR xor_key);
 
-auto fnRtlRandomEx = LI_FN(RtlRandomEx);
-
 int main(int argc, char** argv) {
-    if (argc != 3) {
-        std::cerr << "Usage: " << argv[0] << " <initial_loader> <output_file>" << std::endl;
+    if (argc < 3) {
+        std::cerr << "Usage: " << argv[0] << " <output_file> <initial_loader> [module...]" << std::endl;
         return 1;
     }
 
-    std::string initial_loader_path = argv[1];
-    std::string output_file_path = argv[2];
+    std::string output_file_path = argv[1];
+    std::string initial_loader_path = argv[2];
+    std::vector<std::string> module_paths;
+    for (int i = 3; i < argc; i++)
+        module_paths.push_back(argv[i]);
 
     auto initial_loader_buffer = read_file(initial_loader_path);
     if (!initial_loader_buffer.has_value()) {
@@ -32,10 +37,20 @@ int main(int argc, char** argv) {
         return 1;
     }
 
+    std::vector<std::vector<BYTE>> module_buffers;
+    for (auto& module_path : module_paths) {
+        auto module_buffer = read_file(module_path);
+        if (!module_buffer.has_value()) {
+            std::cerr << "Failed to read module file: " << module_path << std::endl;
+            return 1;
+        }
+        module_buffers.push_back(module_buffer.value());
+    }
+
     ULONG seed = (ULONG)GetTickCount64();
     ULONG_PTR xor_key = (ULONG_PTR)fnRtlRandomEx(&seed) | ((ULONG_PTR)fnRtlRandomEx(&seed) << 32);
 
-    DWORD NumberOfSections = 2;
+    DWORD NumberOfSections = 2 + module_buffers.size();
 
     // DOS header
     IMAGE_DOS_HEADER dos_header;
@@ -103,7 +118,7 @@ int main(int argc, char** argv) {
     // loader section
     IMAGE_SECTION_HEADER initial_loader_section_header;
     memset(&initial_loader_section_header, 0, sizeof(initial_loader_section_header));
-    initial_loader_section_header.Name[0] = 'l';
+    initial_loader_section_header.Name[0] = 'l'; // loader
     randomize_section_name(&initial_loader_section_header, &seed);
     initial_loader_section_header.Misc.VirtualSize = initial_loader_buffer->size();
     initial_loader_section_header.VirtualAddress = NextVirtualAddress;
@@ -119,13 +134,34 @@ int main(int argc, char** argv) {
     auto bootstrap_shellcode = get_bootstrap_shellcode(xor_key, initial_loader_section_header.VirtualAddress, initial_loader_section_header.SizeOfRawData);
     IMAGE_SECTION_HEADER bootstrap_section_header;
     memset(&bootstrap_section_header, 0, sizeof(bootstrap_section_header));
-    bootstrap_section_header.Name[0] = 'b';
+    bootstrap_section_header.Name[0] = 'b'; // bootstrap
     randomize_section_name(&bootstrap_section_header, &seed);
     bootstrap_section_header.Misc.VirtualSize = bootstrap_shellcode.size();
     bootstrap_section_header.VirtualAddress = NextVirtualAddress;
     bootstrap_section_header.SizeOfRawData = bootstrap_shellcode.size();
     bootstrap_section_header.PointerToRawData = NextPointerToRawData;
     bootstrap_section_header.Characteristics = IMAGE_SCN_MEM_EXECUTE | IMAGE_SCN_MEM_READ | IMAGE_SCN_MEM_WRITE;
+
+    // module sections
+    std::vector<IMAGE_SECTION_HEADER> module_section_headers;
+    for (auto& module_buffer : module_buffers) {
+        // get next free virtual address and pointer to raw data (round up to nearest SectionAlignment)
+        NextVirtualAddress += GetAlignedSize(module_buffer.size(), nt_headers.OptionalHeader.SectionAlignment);
+        NextPointerToRawData += GetAlignedSize(module_buffer.size(), nt_headers.OptionalHeader.FileAlignment);
+
+        // section header
+        IMAGE_SECTION_HEADER section_header;
+        memset(&section_header, 0, sizeof(section_header));
+        section_header.Name[0] = 'e'; // encrypted
+        randomize_section_name(&section_header, &seed);
+        section_header.Misc.VirtualSize = module_buffer.size();
+        section_header.VirtualAddress = NextVirtualAddress;
+        section_header.SizeOfRawData = module_buffer.size();
+        section_header.PointerToRawData = NextPointerToRawData;
+        section_header.Characteristics = IMAGE_SCN_MEM_READ | IMAGE_SCN_MEM_WRITE;
+
+        module_section_headers.push_back(section_header);
+    }
 
     // get next free virtual address and pointer to raw data (round up to nearest SectionAlignment)
     NextVirtualAddress += GetAlignedSize(bootstrap_section_header.Misc.VirtualSize, nt_headers.OptionalHeader.SectionAlignment);
@@ -153,14 +189,24 @@ int main(int argc, char** argv) {
     // write section headers
     pe_file.write((char*)&initial_loader_section_header, sizeof(initial_loader_section_header));
     pe_file.write((char*)&bootstrap_section_header, sizeof(bootstrap_section_header));
+    for (auto& module_section_header : module_section_headers)
+        pe_file.write((char*)&module_section_header, sizeof(module_section_header));
 
-    // write section data
+    // write loader section data
     encrypt_buffer(initial_loader_buffer->data(), initial_loader_buffer->size(), xor_key);
     pe_file.seekp(initial_loader_section_header.PointerToRawData);
     pe_file.write((char*)initial_loader_buffer->data(), initial_loader_buffer->size());
 
+    // write bootstrap section data
     pe_file.seekp(bootstrap_section_header.PointerToRawData);
     pe_file.write((char*)bootstrap_shellcode.data(), bootstrap_shellcode.size());
+
+    // write module section data
+    for (int i = 0; i < module_buffers.size(); i++) {
+        encrypt_buffer(module_buffers[i].data(), module_buffers[i].size(), xor_key);
+        pe_file.seekp(module_section_headers[i].PointerToRawData);
+        pe_file.write((char*)module_buffers[i].data(), module_buffers[i].size());
+    }
 
     pe_file.close();
     return 0;
