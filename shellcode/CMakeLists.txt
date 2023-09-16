@@ -24,7 +24,7 @@ endif()
 
 add_library(initial_loader STATIC initial_loader.cpp)
 target_link_libraries(initial_loader PRIVATE lazy_importer xorstr)
-target_compile_definitions(initial_loader PRIVATE UNICODE _UNICODE LAZY_IMPORTER_NO_CPP_FORWARD)
+target_compile_definitions(initial_loader PRIVATE UNICODE _UNICODE)
 target_compile_features(initial_loader PUBLIC c_std_17 cxx_std_20)
 # disable security checks, disable SDL checks
 target_compile_options(initial_loader PRIVATE /O1 /GS- /sdl-)

