@@ -1,0 +1,4 @@
+add_executable(resource_generator rsource_generator.cpp)
+target_compile_features(resource_generator PUBLIC c_std_17 cxx_std_20)
+target_compile_definitions(resource_generator PRIVATE UNICODE _UNICODE)
+set_target_properties(resource_generator PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})

@@ -1,4 +1,5 @@
 add_subdirectory(driver)
+add_subdirectory(rsource_generator)
 add_subdirectory(stage1)
 add_subdirectory(stage2)
 add_subdirectory(initial_loader)

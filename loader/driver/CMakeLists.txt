@@ -3,5 +3,5 @@ list(APPEND CMAKE_MODULE_PATH "${FindWDK_SOURCE_DIR}/cmake")
 find_package(WDK REQUIRED)
 
 wdk_add_driver(fumo_drv WINVER 0x4A61 driver.c memory.c thread.c)
-
 target_include_directories(fumo_drv PRIVATE ${CMAKE_SOURCE_DIR}/Include)
+set_target_properties(fumo_drv PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
