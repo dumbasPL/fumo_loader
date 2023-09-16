@@ -7,8 +7,8 @@ add_custom_command(
 )
 
 add_library(stage1 MODULE fumo_preloader.cpp ${CMAKE_CURRENT_BINARY_DIR}/Resources/fumo_drv_data.cpp)
-target_include_directories(stage1 PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/Resources)
+target_include_directories(stage1 PRIVATE ${CMAKE_SOURCE_DIR}/Include ${CMAKE_CURRENT_BINARY_DIR}/Resources)
 target_compile_features(stage1 PUBLIC c_std_17 cxx_std_20)
 target_compile_definitions(stage1 PRIVATE UNICODE _UNICODE)
 target_compile_options(stage1 PRIVATE /O1 /GS- /sdl- /guard:cf- /Zc:threadSafeInit-)
-target_link_libraries(stage1 PUBLIC fumo_loader libKDU)
+target_link_libraries(stage1 PUBLIC ntdll libKDU driver_interface)
