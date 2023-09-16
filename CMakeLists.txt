@@ -14,7 +14,5 @@ endif()
 set(CPM_SOURCE_CACHE "${CMAKE_SOURCE_DIR}/.cache/cpm")
 include(cmake/CPM.cmake)
 
-add_subdirectory(shellcode)
 add_subdirectory(driver)
 add_subdirectory(loader)
-add_subdirectory(client)

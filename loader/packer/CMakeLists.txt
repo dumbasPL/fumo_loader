@@ -55,11 +55,11 @@ target_link_libraries(pe_generator PRIVATE lazy_importer)
 add_custom_command(
     DEPENDS pe_generator
     DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/libs/initial_loader.bin
-    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/fumo_loader.exe
-    COMMAND pe_generator ${CMAKE_CURRENT_BINARY_DIR}/libs/initial_loader.bin ${CMAKE_CURRENT_BINARY_DIR}/fumo_loader.exe
+    OUTPUT ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${CMAKE_CFG_INTDIR}/fumo_loader.exe
+    COMMAND pe_generator ${CMAKE_CURRENT_BINARY_DIR}/libs/initial_loader.bin ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${CMAKE_CFG_INTDIR}/fumo_loader.exe
 )
 
 add_custom_target(
     fumo_loader_pe ALL
-    DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/fumo_loader.exe
+    DEPENDS ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${CMAKE_CFG_INTDIR}/fumo_loader.exe
 )

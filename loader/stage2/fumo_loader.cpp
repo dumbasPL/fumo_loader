@@ -85,7 +85,6 @@ DWORD Shellcode(PMANUAL_MAPPING_DATA pMmData) {
 VOID Shellcode_End() {}
 
 DWORD fumo_loader::MapImage(DriverInterface* pDriver, ULONG pid, PVOID pImage) {
-
 	// parse the PE header
 	auto dos_header = (PIMAGE_DOS_HEADER)pImage;
 	if (dos_header->e_magic != IMAGE_DOS_SIGNATURE)
@@ -114,9 +113,8 @@ DWORD fumo_loader::MapImage(DriverInterface* pDriver, ULONG pid, PVOID pImage) {
 	auto section_header = IMAGE_FIRST_SECTION(nt_headers);
 	for (auto i = 0; i < nt_headers->FileHeader.NumberOfSections; i++) {
 		auto section = &section_header[i];
-		if (section->SizeOfRawData == 0) {
+		if (section->SizeOfRawData == 0)
 			continue;
-		}
 		auto section_data = (PVOID)((ULONG_PTR)pImage + section->PointerToRawData);
 		memcpy((PVOID)((ULONG_PTR)kernel_image + section->VirtualAddress), section_data, section->SizeOfRawData);
 	}
@@ -147,7 +145,7 @@ DWORD fumo_loader::MapImage(DriverInterface* pDriver, ULONG pid, PVOID pImage) {
 	auto manual_mapping_data_addr = (PMANUAL_MAPPING_DATA)((ULONG_PTR)shellcode_addr + size_of_shellcode);
 	memcpy(manual_mapping_data_addr, &ManualMappingData, size_of_shellcode_data);
 
-	if (!pDriver->ExposeKernelMemory(pid, kernel_image, size_of_mapping)) {
+	if (!pDriver->ExposeKernelMemory(pid, kernel_image, size_of_mapping))
 		return GetLastError();
 
 	if (!pDriver->ExecuteCode(pid, shellcode_addr, manual_mapping_data_addr))
