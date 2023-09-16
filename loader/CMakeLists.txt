@@ -13,7 +13,6 @@ add_custom_command(
     COMMAND pe_generator ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${CMAKE_CFG_INTDIR}/fumo_loader.exe
         $<TARGET_PROPERTY:initial_loader,RUNTIME_OUTPUT_DIRECTORY>/initial_loader.bin
         $<TARGET_FILE:stage1>
-        $<TARGET_FILE:stage1>
     OUTPUT ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${CMAKE_CFG_INTDIR}/fumo_loader.exe
 )
 

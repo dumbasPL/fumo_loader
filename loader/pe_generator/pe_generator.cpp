@@ -6,7 +6,6 @@
 #include <vector>
 #include <iomanip>
 #include <optional>
-#include "imports.h"
 #include "bootstrap.h"
 
 NTSYSAPI ULONG RtlRandomEx(PULONG Seed);
