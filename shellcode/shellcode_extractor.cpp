@@ -3,7 +3,6 @@
 #include <fstream>
 #include <string>
 #include <vector>
-#include <sstream>
 #include <iomanip>
 
 // purpose: extract shellcode from object file given symbol name and emit C++ code
@@ -15,14 +14,14 @@
 std::string getSymbolName(PIMAGE_SYMBOL symbol, PBYTE string_table);
 
 int main(int argc, char** argv) {
-  if (argc < 3 || argc > 4) {
-    std::cerr << "Usage: " << argv[0] << " <object_file> <symbol_name> [output_file]" << std::endl;
+  if (argc != 4) {
+    std::cerr << "Usage: " << argv[0] << " <object_file> <symbol_name> <output_file>" << std::endl;
     return 1;
   }
 
   std::string object_file_name = argv[1];
   std::string target_symbol_name = argv[2];
-  std::string output_file_name = argc == 4 ? argv[3] : "";
+  std::string output_file_name = argv[3];
 
   std::ifstream object_file(argv[1], std::ios::binary);
   if (!object_file.is_open()) {
@@ -86,35 +85,14 @@ int main(int argc, char** argv) {
   PBYTE section_data = object_base + target_section->PointerToRawData + SectionOffset;
   DWORD section_size = target_section->SizeOfRawData - SectionOffset;
 
-  std::vector<BYTE> function_data;
-  function_data.assign(section_data, section_data + section_size);
-
-  // generate C++ code
-  std::stringstream shellcode;
-  shellcode << "unsigned char " << target_symbol_name << "_data[] = {\n\t";
-  for (int i = 0; i < function_data.size(); i++) {
-    shellcode << "0x" << std::setw(2) << std::setfill('0') << std::hex << (int)function_data[i] << ", ";
-    if ((i + 1) % 16 == 0) {
-      shellcode << "\n\t";
-    }
-  }
-  shellcode << "\n};\n";
-  shellcode << "unsigned int " << target_symbol_name << "_size = sizeof(" << target_symbol_name << "_data);\n";
-
-  // write to stdout if no output file specified
-  if (output_file_name.length() == 0) {
-    std::cout << shellcode.str();
-    return 0;
-  }
-
   // write to file
-  std::ofstream output_file(output_file_name);
+  std::ofstream output_file(output_file_name, std::ios::binary);
   if (!output_file.is_open()) {
     std::cerr << "Failed to open output file" << std::endl;
     return 1;
   }
 
-  output_file << shellcode.str();
+  output_file.write((char*)section_data, section_size);
   output_file.close();
   return 0;
 }
