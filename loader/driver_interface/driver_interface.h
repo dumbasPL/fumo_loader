@@ -4,7 +4,7 @@
 #include <fomo_common.h>
 #include <iostream>
 
-namespace fumo_loader {
+namespace fumo {
 
 class DriverInterface {
 private:
@@ -23,4 +23,4 @@ public:
     ~DriverInterface();
 };
 
-} // namespace fumo_loader
+} // namespace fumo

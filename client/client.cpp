@@ -48,7 +48,7 @@ int main(int argc, char** argv) {
     }
     std::cout << "Read " << dll_buffer.value().size() << " bytes from file" << std::endl;
 
-    auto driver_ref = fumo_loader::DriverInterface::Open(FUMO_HOOKED_DRIVER_NAME_USER);
+    auto driver_ref = fumo::DriverInterface::Open(FUMO_HOOKED_DRIVER_NAME_USER);
     if (!driver_ref) {
         std::cout << "Failed to open driver " << GetLastError() << std::endl;
         return 1;
@@ -66,7 +66,7 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    auto result = fumo_loader::MapImage(&driver, pid, dll_buffer.value().data());
+    auto result = fumo::MapImage(&driver, pid, dll_buffer.value().data());
     if (result != ERROR_SUCCESS) {
         std::cout << "Failed to map image: " << result << std::endl;
         return 1;

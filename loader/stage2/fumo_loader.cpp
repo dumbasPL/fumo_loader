@@ -84,7 +84,7 @@ DWORD Shellcode(PMANUAL_MAPPING_DATA pMmData) {
 
 VOID Shellcode_End() {}
 
-DWORD fumo_loader::MapImage(DriverInterface* pDriver, ULONG pid, PVOID pImage) {
+DWORD fumo::MapImage(DriverInterface* pDriver, ULONG pid, PVOID pImage) {
 	// parse the PE header
 	auto dos_header = (PIMAGE_DOS_HEADER)pImage;
 	if (dos_header->e_magic != IMAGE_DOS_SIGNATURE)
