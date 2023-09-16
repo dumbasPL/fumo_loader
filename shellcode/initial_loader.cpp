@@ -13,6 +13,14 @@
 #define ERROR_MESSAGE(message)
 #endif
 
+#define ERR_SUCCESS 0
+#define ERR_FAILED_TO_ALLOCATE_MEMORY 1
+#define ERR_FAILED_TO_FIND_LOADER_SECTION 2
+#define ERR_FAILED_TO_FIND_BOOTSTRAP_SECTION 3
+#define ERR_FAILED_TO_OPEN_FILE_FOR_NEW_EXECUTABLE 4
+#define ERR_FAILED_TO_WRITE_NEW_EXECUTABLE_TO_DISK 5
+#define ERR_FAILED_TO_WRITE_ENTIRE_NEW_EXECUTABLE_TO_DISK 6
+
 // plan of action:
 // 1. get module base
 // 2. decrypt all sections
@@ -39,6 +47,7 @@ __forceinline void inline_memcpy(PVOID dest, PVOID src, SIZE_T size) {
 extern "C" int initial_loader(ULONG_PTR xorKey) {
     auto fnGetModuleHandleA = LI_FN(GetModuleHandleA).get();
     auto fnVirtualAlloc = LI_FN(VirtualAlloc).get();
+    auto fnVirtualFree = LI_FN(VirtualFree).get();
     auto fnGetTickCount64 = LI_FN(GetTickCount64).get();
     auto fnRtlRandomEx = LI_FN(RtlRandomEx).get();
     auto fnCreateFileA = LI_FN(CreateFileA).get();
@@ -54,7 +63,7 @@ extern "C" int initial_loader(ULONG_PTR xorKey) {
 #endif
 
     // get module base
-    ULONG_PTR base = (ULONG_PTR)fnGetModuleHandleA(nullptr);
+    ULONG_PTR base = (ULONG_PTR)fnGetModuleHandleA(nullptr); // to lazy to pull it from the PEB directly
 
     // parse the headers
     auto nt_headers = (PIMAGE_NT_HEADERS)(base + ((PIMAGE_DOS_HEADER)base)->e_lfanew);
@@ -77,7 +86,7 @@ extern "C" int initial_loader(ULONG_PTR xorKey) {
     auto new_image_base = (ULONG_PTR)fnVirtualAlloc(nullptr, nt_headers->OptionalHeader.SizeOfImage, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
     if (!new_image_base) {
         ERROR_MESSAGE("Failed to allocate memory for new executable");
-        return 1;
+        return ERR_FAILED_TO_ALLOCATE_MEMORY;
     }
 
     // copy headers
@@ -130,12 +139,12 @@ extern "C" int initial_loader(ULONG_PTR xorKey) {
 
     if (!loader_section) {
         ERROR_MESSAGE("Failed to find loader section");
-        return 2;
+        return ERR_FAILED_TO_FIND_LOADER_SECTION;
     }
 
     if (!bootstrap_section) {
         ERROR_MESSAGE("Failed to find bootstrap section");
-        return 3;
+        return ERR_FAILED_TO_FIND_BOOTSTRAP_SECTION;
     }
 
     // fill bootstrap section with random data
@@ -144,7 +153,6 @@ extern "C" int initial_loader(ULONG_PTR xorKey) {
         *data = fnRtlRandomEx(&seed);
     }
 
-    // generate a new bootstrap section
     auto bootstrap_shellcode = get_bootstrap_shellcode(new_xor_key, loader_section->VirtualAddress, loader_section->SizeOfRawData);
 
     // pick a random offset in the bootstrap section to store the bootstrap shellcode
@@ -166,7 +174,7 @@ extern "C" int initial_loader(ULONG_PTR xorKey) {
         }
     }
 
-    // generate a random file name
+    // generate a new random file name
     char file_name[MAX_PATH];
     for (int i = 0; i < 16; i++) {
         file_name[i] = (char)(fnRtlRandomEx(&seed) % 26 + 'a');
@@ -177,31 +185,24 @@ extern "C" int initial_loader(ULONG_PTR xorKey) {
     file_name[19] = 'e';
     file_name[20] = '\0';
 
-    // open file for the new executable
     auto file_handle = fnCreateFileA(file_name, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
     if (file_handle == INVALID_HANDLE_VALUE) {
         ERROR_MESSAGE("Failed to open file for new executable");
-        return 4;
+        return ERR_FAILED_TO_OPEN_FILE_FOR_NEW_EXECUTABLE;
     }
 
-    // write new executable to disk
     DWORD bytes_written = 0;
     if (!fnWriteFile(file_handle, (PVOID)new_image_base, FileSize, &bytes_written, nullptr)) {
         ERROR_MESSAGE("Failed to write new executable to disk");
-        return 5;
+        return ERR_FAILED_TO_WRITE_NEW_EXECUTABLE_TO_DISK;
     }
 
-    // close file handle
     fnCloseHandle(file_handle);
 
     if (bytes_written != FileSize) {
         ERROR_MESSAGE("Failed to write entire new executable to disk");
-        return 6;
+        return ERR_FAILED_TO_WRITE_ENTIRE_NEW_EXECUTABLE_TO_DISK;
     }
 
-    // display message box
-    fnMessageBoxA(nullptr, xorstr_("WORKS!"), xorstr_("WORKS"), MB_OK | MB_ICONINFORMATION);
-
-    fnExitProcess(0);
-    return 0;
+    return ERR_SUCCESS;
 }

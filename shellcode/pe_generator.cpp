@@ -168,9 +168,8 @@ int main(int argc, char** argv) {
 
 std::optional<std::vector<BYTE>> read_file(std::string path) {
     std::ifstream file(path, std::ios::binary);
-    if (!file.is_open()) {
+    if (!file.is_open())
         return std::nullopt;
-    }
 
     std::vector<BYTE> data;
     data.assign(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
@@ -179,9 +178,8 @@ std::optional<std::vector<BYTE>> read_file(std::string path) {
 
 void randomize_section_name(PIMAGE_SECTION_HEADER section_header, PULONG seed) {
     // start at 1 to skip our "magic" section type indicator
-    for (int j = 1; j < 8; j++) {
+    for (int j = 1; j < 8; j++)
         section_header->Name[j] = (char)(fnRtlRandomEx(seed) % 26 + 'a');
-    }
 }
 
 DWORD GetAlignedSize(DWORD size, DWORD alignment) {

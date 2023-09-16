@@ -119,10 +119,10 @@ typedef union PTE_
 #pragma pack(pop)
 
 typedef struct PAGE_TABLE_INFO_ {
-  PML4E* Pml4e;
-  PDPTE* Pdpte;
-  PDE* Pde;
-  PTE* Pte;
+    PML4E* Pml4e;
+    PDPTE* Pdpte;
+    PDE* Pde;
+    PTE* Pte;
 } PAGE_TABLE_INFO, *PPAGE_TABLE_INFO;
 
 uint64_t GetProcessDirectoryTableBase(PEPROCESS pProcess);
