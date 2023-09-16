@@ -141,13 +141,13 @@ int main(int argc, char** argv) {
     bootstrap_section_header.PointerToRawData = NextPointerToRawData;
     bootstrap_section_header.Characteristics = IMAGE_SCN_MEM_EXECUTE | IMAGE_SCN_MEM_READ | IMAGE_SCN_MEM_WRITE;
 
+    // get next free virtual address and pointer to raw data (round up to nearest SectionAlignment)
+    NextVirtualAddress += GetAlignedSize(bootstrap_section_header.Misc.VirtualSize, nt_headers.OptionalHeader.SectionAlignment);
+    NextPointerToRawData += GetAlignedSize(bootstrap_section_header.SizeOfRawData, nt_headers.OptionalHeader.FileAlignment);
+
     // module sections
     std::vector<IMAGE_SECTION_HEADER> module_section_headers;
     for (auto& module_buffer : module_buffers) {
-        // get next free virtual address and pointer to raw data (round up to nearest SectionAlignment)
-        NextVirtualAddress += GetAlignedSize(module_buffer.size(), nt_headers.OptionalHeader.SectionAlignment);
-        NextPointerToRawData += GetAlignedSize(module_buffer.size(), nt_headers.OptionalHeader.FileAlignment);
-
         // section header
         IMAGE_SECTION_HEADER section_header;
         memset(&section_header, 0, sizeof(section_header));
@@ -159,12 +159,12 @@ int main(int argc, char** argv) {
         section_header.PointerToRawData = NextPointerToRawData;
         section_header.Characteristics = IMAGE_SCN_MEM_READ | IMAGE_SCN_MEM_WRITE;
 
+        // get next free virtual address and pointer to raw data (round up to nearest SectionAlignment)
+        NextVirtualAddress += GetAlignedSize(module_buffer.size(), nt_headers.OptionalHeader.SectionAlignment);
+        NextPointerToRawData += GetAlignedSize(module_buffer.size(), nt_headers.OptionalHeader.FileAlignment);
+
         module_section_headers.push_back(section_header);
     }
-
-    // get next free virtual address and pointer to raw data (round up to nearest SectionAlignment)
-    NextVirtualAddress += GetAlignedSize(bootstrap_section_header.Misc.VirtualSize, nt_headers.OptionalHeader.SectionAlignment);
-    NextPointerToRawData += GetAlignedSize(bootstrap_section_header.SizeOfRawData, nt_headers.OptionalHeader.FileAlignment);
 
     // update NT headers
     nt_headers.OptionalHeader.SizeOfImage = NextVirtualAddress;
