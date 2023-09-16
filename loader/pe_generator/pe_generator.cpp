@@ -94,7 +94,7 @@ int main(int argc, char** argv) {
     nt_headers.OptionalHeader.SizeOfImage = 0; //* needs to be updated
     nt_headers.OptionalHeader.SizeOfHeaders = 0x400; //* needs to be updated
     nt_headers.OptionalHeader.CheckSum = 0x0;
-    nt_headers.OptionalHeader.Subsystem = IMAGE_SUBSYSTEM_WINDOWS_CUI;
+    nt_headers.OptionalHeader.Subsystem = IMAGE_SUBSYSTEM_WINDOWS_GUI;
     nt_headers.OptionalHeader.DllCharacteristics = IMAGE_DLLCHARACTERISTICS_DYNAMIC_BASE | 
         IMAGE_DLLCHARACTERISTICS_NX_COMPAT | IMAGE_DLLCHARACTERISTICS_TERMINAL_SERVER_AWARE;
     nt_headers.OptionalHeader.SizeOfStackReserve = 0x100000;
