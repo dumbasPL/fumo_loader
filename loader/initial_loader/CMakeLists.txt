@@ -1,27 +1,3 @@
-CPMAddPackage(
-    NAME xorstr
-    GITHUB_REPOSITORY JustasMasiulis/xorstr
-    GIT_TAG master
-    DOWNLOAD_ONLY True
-)
-
-if (xorstr_ADDED)
-    add_library(xorstr INTERFACE)
-    target_include_directories(xorstr INTERFACE ${xorstr_SOURCE_DIR}/include)
-endif()
-
-CPMAddPackage(
-    NAME lazy_importer
-    GITHUB_REPOSITORY JustasMasiulis/lazy_importer
-    GIT_TAG master
-    DOWNLOAD_ONLY True
-)
-
-if (lazy_importer_ADDED)
-    add_library(lazy_importer INTERFACE)
-    target_include_directories(lazy_importer INTERFACE ${lazy_importer_SOURCE_DIR}/include)
-endif()
-
 add_library(initial_loader_lib STATIC initial_loader.cpp)
 target_link_libraries(initial_loader_lib PRIVATE lazy_importer xorstr)
 target_compile_definitions(initial_loader_lib PRIVATE UNICODE _UNICODE)

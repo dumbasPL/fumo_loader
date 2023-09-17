@@ -1,5 +1,5 @@
 #include "fumo_loader.h"
-#include <winternl.h>
+#include <driver_interface.h>
 
 using fnLdrLoadDll = NTSTATUS(NTAPI*)(PWCHAR PathToFile, ULONG Flags, PUNICODE_STRING ModuleFileName, HMODULE* ModuleHandle);
 using fnLdrGetProcedureAddress = NTSTATUS(NTAPI*)(HMODULE ModuleHandle, PANSI_STRING FunctionName, WORD Oridinal, PVOID* FunctionAddress);
@@ -84,7 +84,7 @@ DWORD Shellcode(PMANUAL_MAPPING_DATA pMmData) {
 
 VOID Shellcode_End() {}
 
-DWORD fumo::MapImage(DriverInterface* pDriver, ULONG pid, PVOID pImage) {
+DWORD MapImage(fumo::DriverInterface* pDriver, ULONG pid, PVOID pImage) {
 	// parse the PE header
 	auto dos_header = (PIMAGE_DOS_HEADER)pImage;
 	if (dos_header->e_magic != IMAGE_DOS_SIGNATURE)

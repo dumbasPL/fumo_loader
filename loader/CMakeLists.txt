@@ -1,3 +1,33 @@
+CPMAddPackage(
+    NAME xorstr
+    GITHUB_REPOSITORY JustasMasiulis/xorstr
+    GIT_TAG master
+    DOWNLOAD_ONLY True
+)
+
+if (xorstr_ADDED)
+    add_library(xorstr INTERFACE)
+    target_include_directories(xorstr INTERFACE ${xorstr_SOURCE_DIR}/include)
+endif()
+
+CPMAddPackage(
+    NAME lazy_importer
+    GITHUB_REPOSITORY JustasMasiulis/lazy_importer
+    GIT_TAG master
+    DOWNLOAD_ONLY True
+)
+
+if (lazy_importer_ADDED)
+    add_library(lazy_importer INTERFACE)
+    target_include_directories(lazy_importer INTERFACE ${lazy_importer_SOURCE_DIR}/include)
+endif()
+
+CPMAddPackage("gh:SergiusTheBest/FindWDK#master")
+list(APPEND CMAKE_MODULE_PATH "${FindWDK_SOURCE_DIR}/cmake")
+find_package(WDK REQUIRED)
+
+CPMAddPackage("gh:dumbasPL/libKDU#main")
+
 add_subdirectory(driver)
 add_subdirectory(driver_interface)
 add_subdirectory(rsource_generator)
@@ -6,6 +36,7 @@ add_subdirectory(stage2)
 add_subdirectory(initial_loader)
 add_subdirectory(shellcode_extractor)
 add_subdirectory(pe_generator)
+add_subdirectory(encoder)
 
 add_custom_command(
     COMMENT "building final executable"
