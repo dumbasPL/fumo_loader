@@ -1,4 +1,4 @@
-add_library(stage2 MODULE stage2.cpp fumo_loader.cpp)
+add_library(stage2 MODULE stage2.cpp fumo_loader.cpp tray_icon.cpp)
 target_include_directories(stage2 PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../include)
 target_compile_features(stage2 PUBLIC c_std_17 cxx_std_20)
 target_compile_options(stage2 PRIVATE /O1 /GS- /sdl- /guard:cf- /Zc:threadSafeInit-)
