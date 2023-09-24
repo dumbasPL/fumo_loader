@@ -16,7 +16,10 @@ int main(HANDLE loader_process) {
     if (!DeleteFileW(loader_process_name.c_str()))
         return fumo::error(ERR_STAGE2_FAILED_TO_DELETE_LOADER, L"Failed to delete loader executable: {}", loader_process_name);
 
+    tray_icon->send_notification(L"Loader has been deleted");
+
     return fumo::error(ERR_STAGE2_SUCCESS, L"lmao: {}", (void*)&loader_data);
+    // return ERR_STAGE2_SUCCESS;
 }
 
 DWORD stage2(LPVOID lpThreadParameter) {

@@ -16,6 +16,7 @@ public:
     void create_icon(HWND hwnd);
     void destroy_icon();
     void set_icon_message(LPCWSTR lpMessage);
+    void send_notification(LPCWSTR lpMessage);
     void cancel_wait();
     void destroy();
     
