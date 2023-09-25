@@ -8,15 +8,7 @@
 #include <stdint.h>
 #include <ctime>
 #include <fomo_common.h>
-
-std::vector<std::string> split(std::string text, char delim) {
-    std::string line;
-    std::vector<std::string> vec;
-    std::stringstream ss(text);
-    while(std::getline(ss, line, delim))
-        vec.push_back(line);
-    return vec;
-}
+#include <util.h>
 
 int main(int argc, char** argv) {
     // usage: [input_file] [process_name] [wait_for_module1,[wait_for_module2,...]]
@@ -111,21 +103,25 @@ int main(int argc, char** argv) {
         *ptr ^= xor_key;
     }
 
-    // write encrypted data
+    // write output file
     std::ofstream output_file(output_file_name, std::ios::binary);
     if (!output_file.is_open()) {
         std::cerr << "Failed to open output file:" << output_file_name << std::endl;
         return 1;
     }
-    output_file.write("FUMO", 4); // magic
-    uint32_t version = FUMO_DRIVER_VERSION;
-    output_file.write((char*)&version, sizeof(version));
-    output_file.write((char*)&xor_key, sizeof(xor_key));
+
+    FUMO_DATA_HEADER header;
+    header.Magic = FUMO_MAGIC;
+    header.Version = FUMO_DATA_VERSION;
+    header.XorKey = xor_key;
+    header.SettingsSize = loader_settings_data.size();
+    header.DataSize = data.size();
+    output_file.write((char*)&header, sizeof(header));
     output_file.write((char*)loader_settings_data.data(), loader_settings_data.size());
     output_file.write((char*)data.data(), data.size());
+
     output_file.close();
 
     std::cerr << "Successfully encoded " << input_file_name << " to " << output_file_name << std::endl;
-
     return 0;
 }

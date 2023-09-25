@@ -4,6 +4,8 @@
 #include <TlHelp32.h>
 #include <string>
 #include <format>
+#include <sstream>
+#include <vector>
 
 typedef struct _STAGE2_LOADER_DATA {
     ULONG_PTR stage2_base;
@@ -14,6 +16,15 @@ typedef struct _STAGE2_LOADER_DATA {
 extern "C" NTSYSAPI NTSTATUS NTAPI RtlGetVersion(
     _Out_ PRTL_OSVERSIONINFOW lpVersionInformation
 );
+
+inline std::vector<std::string> split(std::string text, char delim) {
+    std::string line;
+    std::vector<std::string> vec;
+    std::stringstream ss(text);
+    while(std::getline(ss, line, delim))
+        vec.push_back(line);
+    return vec;
+}
 
 inline bool isHvciEnabled() {
     SYSTEM_CODEINTEGRITY_INFORMATION sci = { 0 };

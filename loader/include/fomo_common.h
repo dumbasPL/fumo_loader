@@ -4,6 +4,7 @@
 #define MIN_OS_MAJOR_VERSION 10
 #define MIN_OS_BUILD_NUMBER 19041
 
+#define FUMO_MAGIC 'OMUF'
 #define FUMO_DRIVER_VERSION 0x00000001
 #define FUMO_HOOKED_DRIVER_NAME L"\\Driver\\Null"
 #define FUMO_HOOKED_DRIVER_NAME_USER L"\\\\.\\NUL"
@@ -39,3 +40,11 @@ typedef struct _IO_EXECUTE_REQUEST_DATA {
     PVOID Address;
     PVOID Argument;
 } IO_EXECUTE_REQUEST_DATA, *PIO_EXECUTE_REQUEST_DATA;
+
+typedef struct _FUMO_DATA_HEADER {
+    DWORD Magic;
+    DWORD Version;
+    DWORDLONG XorKey;
+    DWORD SettingsSize;
+    DWORD DataSize;
+} FUMO_DATA_HEADER, *PFUMO_DATA_HEADER;

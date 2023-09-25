@@ -1,5 +1,9 @@
+#include "stage2.h"
 #include "fumo_loader.h"
 #include "tray_icon.h"
+#include <fomo_common.h>
+#include <util.h>
+#include <sstream>
 
 std::wstring loader_process_name = L"";
 STAGE2_LOADER_DATA loader_data;
@@ -15,8 +19,37 @@ int main(HANDLE loader_process) {
     // delete the loader executable
     if (!DeleteFileW(loader_process_name.c_str()))
         return fumo::error(ERR_STAGE2_FAILED_TO_DELETE_LOADER, L"Failed to delete loader executable: {}", loader_process_name);
+    
+    PFUMO_DATA_HEADER header = (PFUMO_DATA_HEADER)loader_data.fumo_data_base;
 
-    tray_icon->send_notification(L"Loader has been deleted");
+    // check magic
+    if (header->Magic != FUMO_MAGIC)
+        return fumo::error(ERR_STAGE2_INVALID_MAGIC, L"Invalid data format", loader_process_name);
+    
+    // check version
+    if (header->Version != FUMO_DATA_VERSION)
+        return fumo::error(ERR_STAGE2_INVALID_VERSION, L"Invalid data version", loader_process_name);
+    
+    // decrypt the settings
+    PBYTE settings_data = (PBYTE)header + sizeof(FUMO_DATA_HEADER);
+    uint64_t xor_key = header->XorKey;
+    for (int i = 0; i < header->SettingsSize; i += sizeof(xor_key)) {
+        uint64_t* ptr = (uint64_t*)&settings_data[i];
+        *ptr ^= xor_key;
+    }
+
+    // parse the settings
+    DWORD settings_size = *(DWORD*)settings_data;
+    settings_data += sizeof(DWORD);
+    std::string settings((char*)settings_data, settings_size);
+    std::stringstream settings_stream(settings);
+    
+    std::string process_name;
+    std::string wait_for_modules_string;
+    std::getline(settings_stream, process_name, ';');
+    std::getline(settings_stream, wait_for_modules_string, ';');
+    
+    std::vector<std::string> wait_for_modules = split(wait_for_modules_string, ',');
 
     return fumo::error(ERR_STAGE2_SUCCESS, L"lmao: {}", (void*)&loader_data);
     // return ERR_STAGE2_SUCCESS;

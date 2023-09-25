@@ -19,20 +19,21 @@ int main() {
     
     std::vector<BYTE> fumo_data;
     fumo_data.assign(std::istreambuf_iterator<char>(fumo_stream), std::istreambuf_iterator<char>());
-    if (fumo_data.size() < 0x1000 + 8 + 4) // header + xor key + magic
+    if (fumo_data.size() < sizeof(FUMO_DATA_HEADER) + 0x1000) // header + one page
         return fumo::error(ERR_STAGE1_FAILED_TO_OPEN_FILE, L"File to small: {}", fumo_file.wstring());
 
+    PFUMO_DATA_HEADER header = (PFUMO_DATA_HEADER)fumo_data.data();
+
     // check magic
-    if ('OMUF' != *(DWORD*)&fumo_data[0]) // FUMO
+    if (header->Magic != FUMO_MAGIC)
         return fumo::error(ERR_STAGE1_FAILED_TO_OPEN_FILE,
             L"Invalid file format: {}\nTip: use fumo_encoder to generate a .fumo file", fumo_file.wstring());
     
     // check version
-    DWORD file_version = *(DWORD*)&fumo_data[4];
-    if (file_version != FUMO_DRIVER_VERSION)
+    if (header->Version != FUMO_DATA_VERSION)
         return fumo::error(ERR_STAGE1_FAILED_TO_OPEN_FILE,
             L"Invalid file version (expected: {}, found: {}): {}\nTip: use fumo_encoder to generate a .fumo file",
-            fumo_file.wstring(), FUMO_DRIVER_VERSION, file_version);
+            fumo_file.wstring(), FUMO_DATA_VERSION, header->Version);
 
     OSVERSIONINFO osv;
     osv.dwOSVersionInfoSize = sizeof(osv);
