@@ -1,8 +1,9 @@
 #include "fumo_loader.h"
+#include "stage2.h"
 #include <driver_interface.h>
 
 using fnLdrLoadDll = NTSTATUS(NTAPI*)(PWCHAR PathToFile, ULONG Flags, PUNICODE_STRING ModuleFileName, HMODULE* ModuleHandle);
-using fnLdrGetProcedureAddress = NTSTATUS(NTAPI*)(HMODULE ModuleHandle, PANSI_STRING FunctionName, WORD Oridinal, PVOID* FunctionAddress);
+using fnLdrGetProcedureAddress = NTSTATUS(NTAPI*)(HMODULE ModuleHandle, PANSI_STRING FunctionName, WORD Ordinal, PVOID* FunctionAddress);
 using fnRtlAnsiStringToUnicodeString = decltype(&RtlAnsiStringToUnicodeString);
 using fnDllMain = BOOL(WINAPI*)(HMODULE hModule, DWORD dwReason, LPVOID lpReserved);
 
@@ -79,25 +80,25 @@ DWORD Shellcode(PMANUAL_MAPPING_DATA pMmData) {
 	auto entry_point = (fnDllMain)((ULONG_PTR)pMmData->ImageBase + nt_headers->OptionalHeader.AddressOfEntryPoint);
 	entry_point((HMODULE)pMmData->ImageBase, DLL_PROCESS_ATTACH, nullptr);
 
-	return ERROR_SUCCESS;
+	return 0;
 }
 
 VOID Shellcode_End() {}
 
-DWORD MapImage(fumo::DriverInterface* pDriver, ULONG pid, PVOID pImage) {
+int MapImage(fumo::DriverInterface* pDriver, ULONG pid, PVOID pImage) {
 	// parse the PE header
 	auto dos_header = (PIMAGE_DOS_HEADER)pImage;
 	if (dos_header->e_magic != IMAGE_DOS_SIGNATURE)
-		return ERROR_BAD_EXE_FORMAT;
+		return fumo::error(ERR_STAGE2_INVALID_PE_HEADER, L"Invalid PE header");
 
 	// parse the NT header
 	auto nt_headers = (PIMAGE_NT_HEADERS)((ULONG_PTR)pImage + dos_header->e_lfanew);
 	if (nt_headers->Signature != IMAGE_NT_SIGNATURE)
-		return ERROR_BAD_EXE_FORMAT;
+		return fumo::error(ERR_STAGE2_INVALID_PE_HEADER, L"Invalid PE header");
 
 	// make sure the image is 64-bit
 	if (nt_headers->FileHeader.Machine != IMAGE_FILE_MACHINE_AMD64)
-		return ERROR_BAD_EXE_FORMAT;
+		return fumo::error(ERR_STAGE2_INVALID_PE_HEADER, L"Invalid PE header");
 
 	ULONG size_of_shellcode = (ULONG)((SIZE_T)Shellcode_End - (SIZE_T)Shellcode);
 	ULONG size_of_shellcode_data = sizeof(MANUAL_MAPPING_DATA);
@@ -105,6 +106,8 @@ DWORD MapImage(fumo::DriverInterface* pDriver, ULONG pid, PVOID pImage) {
 	auto size_of_mapping = size_of_image + size_of_shellcode + size_of_shellcode_data;
 
 	auto kernel_image = pDriver->AllocateKernelMemory(size_of_mapping);
+    if (!kernel_image)
+        return fumo::error(ERR_STAGE2_FAILED_TO_ALLOCATE_MEMORY, L"Failed to allocate kernel memory");
 
 	// copy headers
 	memcpy(kernel_image, pImage, nt_headers->OptionalHeader.SizeOfHeaders);
@@ -130,7 +133,13 @@ DWORD MapImage(fumo::DriverInterface* pDriver, ULONG pid, PVOID pImage) {
 				if (relocation[i] >> 12 == IMAGE_REL_BASED_DIR64) {
 					auto address = (PULONG_PTR)((ULONG_PTR)kernel_image + base_relocation->VirtualAddress + (relocation[i] & 0xFFF));
 					*address += delta;
-				}
+				} 
+                else if (relocation[i] >> 12 == IMAGE_REL_BASED_HIGHLOW) {
+                    auto address = (PULONG)((ULONG_PTR)kernel_image + base_relocation->VirtualAddress + (relocation[i] & 0xFFF));
+                    *address += (ULONG)delta;
+                }
+                else if (relocation[i] >> 12 != IMAGE_REL_BASED_ABSOLUTE)
+                    return fumo::error(ERR_STAGE2_FAILED_TO_MAP_FILE, L"Failed to map file (unsupported relocation type)");
 			}
 			base_relocation = (PIMAGE_BASE_RELOCATION)((ULONG_PTR)base_relocation + base_relocation->SizeOfBlock);
 		}
@@ -146,10 +155,10 @@ DWORD MapImage(fumo::DriverInterface* pDriver, ULONG pid, PVOID pImage) {
 	memcpy(manual_mapping_data_addr, &ManualMappingData, size_of_shellcode_data);
 
 	if (!pDriver->ExposeKernelMemory(pid, kernel_image, size_of_mapping))
-		return GetLastError();
+		return fumo::error(ERR_STAGE2_FAILED_TO_EXPOSE_MEMORY, L"Failed to expose kernel memory");
 
 	if (!pDriver->ExecuteCode(pid, shellcode_addr, manual_mapping_data_addr))
-		return GetLastError();
+		return fumo::error(ERR_STAGE2_FAILED_TO_EXECUTE, L"Failed to execute code");
 
-	return ERROR_SUCCESS;
+	return ERR_STAGE2_SUCCESS;
 }

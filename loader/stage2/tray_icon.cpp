@@ -141,6 +141,15 @@ void TrayIcon::set_icon_message(LPCWSTR lpMessage) {
     Shell_NotifyIconW(NIM_MODIFY, &nid);
 }
 
+void TrayIcon::clear_notification() {
+    NOTIFYICONDATAW nid = {};
+    nid.cbSize = sizeof(NOTIFYICONDATAW);
+    nid.hWnd = hwnd;
+    nid.uID = uID;
+    nid.uFlags = NIF_INFO;
+    Shell_NotifyIconW(NIM_MODIFY, &nid);
+}
+
 void TrayIcon::send_notification(LPCWSTR lpMessage) {
     NOTIFYICONDATAW nid = {};
     nid.cbSize = sizeof(NOTIFYICONDATAW);

@@ -23,16 +23,16 @@ int main(HANDLE loader_process) {
     
     auto driver = fumo::DriverInterface::Open(FUMO_HOOKED_DRIVER_NAME_USER);
     if (!driver.has_value())
-        return fumo::error(ERR_STAGE1_FAILED_TO_OPEN_DRIVER, L"Failed to open driver");
+        return fumo::error(ERR_STAGE2_FAILED_TO_OPEN_DRIVER, L"Failed to open driver");
 
     auto& driver_ref = driver.value().get();
 
     auto driver_version = driver_ref.GetVersion();
     if (!driver_version.has_value())
-        return fumo::error(ERR_STAGE1_FAILED_TO_OPEN_DRIVER, L"Failed to get driver version");
+        return fumo::error(ERR_STAGE2_FAILED_TO_OPEN_DRIVER, L"Failed to get driver version");
 
     if (driver_version.value() != FUMO_DRIVER_VERSION)
-        return fumo::error(ERR_STAGE1_INVALID_DRIVER_VERSION, L"Invalid driver version (expected: {}, found: {})", FUMO_DRIVER_VERSION, driver_version.value());
+        return fumo::error(ERR_STAGE2_INVALID_DRIVER_VERSION, L"Invalid driver version (expected: {}, found: {})", FUMO_DRIVER_VERSION, driver_version.value());
     
     PFUMO_DATA_HEADER header = (PFUMO_DATA_HEADER)loader_data.fumo_data_base;
 
@@ -64,6 +64,8 @@ int main(HANDLE loader_process) {
     std::getline(settings_stream, wait_for_modules_string, ';');
     
     std::vector<std::string> wait_for_modules = split(wait_for_modules_string, ',');
+
+    tray_icon->send_notification(L"Ready");
 
     std::wstring process_name_w = convert_to_wstring(process_name);
     WAIT_FOR_PROCESS_DATA wait_for_process_data;
@@ -98,12 +100,14 @@ int main(HANDLE loader_process) {
     CloseHandle(hThread);
     CloseHandle(wait_for_process_data.cancel_event);
 
+    auto process_id = wait_for_process_data.process_id;
+
     // wait for all modules to be loaded
     for (auto& module : wait_for_modules) {
         std::wstring module_name = convert_to_wstring(module);
         WAIT_FOR_MODULE_DATA wait_for_module_data;
         wait_for_module_data.driver_interface = &driver_ref;
-        wait_for_module_data.process_id = wait_for_process_data.process_id;
+        wait_for_module_data.process_id = process_id;
         wait_for_module_data.module_base = 0;
         wait_for_module_data.module_name = module_name.c_str();
         wait_for_module_data.cancel_event = CreateEventW(NULL, TRUE, FALSE, NULL);
@@ -143,15 +147,30 @@ int main(HANDLE loader_process) {
             return fumo::error(ERR_STAGE2_FAILED_TO_WAIT_FOR_MODULE, L"Failed to wait for module error ({}): {}", module_name, exit_code);
     }
 
-    return fumo::error(ERR_STAGE2_SUCCESS, L"lmao: {}", (void*)&loader_data);
-    // return ERR_STAGE2_SUCCESS;
+    // decrypt the data
+    PBYTE data = (PBYTE)header + sizeof(FUMO_DATA_HEADER) + header->SettingsSize;
+    for (int i = 0; i < header->DataSize; i += sizeof(xor_key)) {
+        uint64_t* ptr = (uint64_t*)&data[i];
+        *ptr ^= xor_key;
+    }
+
+    // let the magic happen
+    auto error = MapImage(&driver_ref, process_id, data);
+    if (error != ERROR_SUCCESS)
+        return error;
+    
+    tray_icon->clear_notification();
+    tray_icon->send_notification(L"Injected");
+
+    return ERR_STAGE2_SUCCESS;
 }
 
 DWORD stage2(LPVOID lpThreadParameter) {
     tray_icon = new TrayIcon(L"Fumo Loader");
-    main((HANDLE)lpThreadParameter);
+    auto res = main((HANDLE)lpThreadParameter);
+    VirtualFree((LPVOID)loader_data.fumo_data_base, 0, MEM_RELEASE);
     delete tray_icon;
-    return 0;
+    return res;
 }
 
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved) {
