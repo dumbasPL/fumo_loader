@@ -6,6 +6,8 @@
 #include <format>
 #include <sstream>
 #include <vector>
+#include <locale>
+#include <codecvt>
 
 typedef struct _STAGE2_LOADER_DATA {
     ULONG_PTR stage2_base;
@@ -24,6 +26,11 @@ inline std::vector<std::string> split(std::string text, char delim) {
     while(std::getline(ss, line, delim))
         vec.push_back(line);
     return vec;
+}
+
+inline std::wstring convert_to_wstring(const std::string &str) {
+    std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t> conv;
+    return conv.from_bytes(str);
 }
 
 inline bool isHvciEnabled() {

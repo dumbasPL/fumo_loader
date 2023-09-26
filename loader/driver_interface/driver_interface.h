@@ -20,6 +20,7 @@ public:
     PVOID AllocateKernelMemory(ULONG size);
     BOOL ExposeKernelMemory(ULONG pid, PVOID address, ULONG size);
     BOOL ExecuteCode(ULONG pid, PVOID address, PVOID argument);
+    BOOL FindModule(ULONG pid, LPCWSTR lpModuleName, PVOID* Address);
     ~DriverInterface();
 };
 

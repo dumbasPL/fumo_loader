@@ -139,3 +139,24 @@ BOOL ExposeKernelMemoryToProcess(PEPROCESS pProcess, PVOID Address, SIZE_T Size)
 
     return success;
 }
+
+PVOID FindModule(PEPROCESS pProcess, PUNICODE_STRING ModuleName) {
+    if (!pProcess || !ModuleName)
+        return NULL;
+    
+    PPEB pPeb = PsGetProcessPeb(pProcess);
+    if (!pPeb)
+        return NULL;
+    
+    PPEB_LDR_DATA pLdr = pPeb->Ldr;
+    if (!pLdr)
+        return NULL;
+    
+    for (PLIST_ENTRY pListEntry = pLdr->InLoadOrderModuleList.Flink; pListEntry != &pLdr->InLoadOrderModuleList; pListEntry = pListEntry->Flink) {
+        PLDR_DATA_TABLE_ENTRY pEntry = CONTAINING_RECORD(pListEntry, LDR_DATA_TABLE_ENTRY, InLoadOrderLinks);
+        if (RtlCompareUnicodeString(&pEntry->BaseDllName, ModuleName, TRUE) == 0)
+            return pEntry->DllBase;
+    }
+
+    return NULL;
+}

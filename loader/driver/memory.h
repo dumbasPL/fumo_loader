@@ -132,3 +132,4 @@ BOOL WritePhysicalUnsafe(uint64_t TargetAddress, PVOID lpBuffer, SIZE_T Size);
 PAGE_TABLE_INFO QueryPageTableInfo(uint64_t directoryTableBase, PVOID Va);
 uint64_t VirtToPhys(uint64_t DirectoryTableBase, PVOID Va);
 BOOL ExposeKernelMemoryToProcess(PEPROCESS pProcess, PVOID Address, SIZE_T Size);
+PVOID FindModule(PEPROCESS pProcess, PUNICODE_STRING ModuleName);

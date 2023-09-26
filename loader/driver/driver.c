@@ -190,6 +190,42 @@ NTSTATUS Hk_DeviceControl(PDEVICE_OBJECT DeviceObject, PIRP Irp) {
         status = STATUS_SUCCESS;
         break;
     }
+    case IO_FIND_MODULE_REQUEST: {
+        if (stack->Parameters.DeviceIoControl.InputBufferLength != sizeof(IO_FIND_MODULE_REQUEST_DATA)) {
+            status = STATUS_INVALID_PARAMETER;
+            break;
+        }
+        if (stack->Parameters.DeviceIoControl.OutputBufferLength != sizeof(IO_FIND_MODULE_RESPONSE_DATA)) {
+            status = STATUS_INVALID_PARAMETER;
+            break;
+        }
+        PIO_FIND_MODULE_REQUEST_DATA input = (PIO_FIND_MODULE_REQUEST_DATA)Irp->AssociatedIrp.SystemBuffer;
+        PIO_FIND_MODULE_RESPONSE_DATA output = (PIO_FIND_MODULE_RESPONSE_DATA)Irp->AssociatedIrp.SystemBuffer;
+
+        Log("IO_FIND_MODULE_REQUEST received with pid %d, module name %ws", input->Pid, input->ModuleName);
+
+        PEPROCESS pProcess = NULL;
+        status = PsLookupProcessByProcessId((HANDLE)input->Pid, &pProcess);
+        if (!NT_SUCCESS(status)) {
+            Log("Failed to lookup process by pid (0x%08X)", status);
+            break;
+        }
+
+        KAPC_STATE apcState;
+        KeStackAttachProcess(pProcess, &apcState);
+
+        UNICODE_STRING moduleName;
+        RtlInitUnicodeString(&moduleName, input->ModuleName);
+
+        output->Address = FindModule(pProcess, &moduleName);
+
+        KeUnstackDetachProcess(&apcState);
+        ObDereferenceObject(pProcess);
+
+        bytes = sizeof(IO_FIND_MODULE_RESPONSE_DATA);
+        status = STATUS_SUCCESS;
+        break;
+    }
     default:
         Log("Unknown IOCTL received: 0x%08X", stack->Parameters.DeviceIoControl.IoControlCode);
         return ((DevCtrlPtr)(gOriginalDispatchFunctionArray[IRP_MJ_DEVICE_CONTROL]))(DeviceObject, Irp);

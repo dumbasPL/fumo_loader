@@ -65,6 +65,23 @@ BOOL fumo::DriverInterface::ExecuteCode(ULONG pid, PVOID address, PVOID argument
         nullptr, nullptr);
 }
 
+BOOL fumo::DriverInterface::FindModule(ULONG pid, LPCWSTR lpModuleName, PVOID* Address) {
+    IO_FIND_MODULE_REQUEST_DATA find_module_request = {0};
+    find_module_request.Pid = pid;
+    wcscpy_s(find_module_request.ModuleName, lpModuleName);
+
+    IO_FIND_MODULE_RESPONSE_DATA find_module_response = {0};
+    if (!DeviceIoControl(hDevice, IO_FIND_MODULE_REQUEST, 
+        &find_module_request, sizeof(find_module_request), 
+        &find_module_response, sizeof(find_module_response), 
+        nullptr, nullptr)) {
+        return FALSE;
+    }
+
+    *Address = find_module_response.Address;
+    return TRUE;
+}
+
 fumo::DriverInterface::~DriverInterface() {
     std::cout << "Closing handle" << std::endl;
     if (hDevice != INVALID_HANDLE_VALUE) {
