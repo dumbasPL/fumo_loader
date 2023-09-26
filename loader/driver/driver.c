@@ -3,9 +3,6 @@
 #include "thread.h"
 #include <fomo_common.h>
 
-DRIVER_INITIALIZE DriverEntry;
-DRIVER_UNLOAD DriverUnload;
-
 PVOID gOriginalDispatchFunctionArray[IRP_MJ_MAXIMUM_FUNCTION];
 
 NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath) {

@@ -1,9 +1,11 @@
 #pragma once
 #include "imports.h"
 
-#define DEBUG
+#ifndef NO_FUMO_DRIVER_DEBUG
+#define FUMO_DRIVER_DEBUG
+#endif
 
-#ifdef DEBUG
+#ifdef FUMO_DRIVER_DEBUG
 
 // FUMO
 #define POOL_TAG 'OMUF'
@@ -17,6 +19,6 @@
 
 #endif
 
+DRIVER_INITIALIZE DriverEntry;
 NTSTATUS SetHook(BOOL setHook);
-NTSTATUS Hk_Create(PDEVICE_OBJECT DeviceObject, PIRP Irp);
 NTSTATUS Hk_DeviceControl(PDEVICE_OBJECT DeviceObject, PIRP Irp);
