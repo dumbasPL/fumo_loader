@@ -17,6 +17,7 @@ std::optional<std::vector<BYTE>> read_file(std::string path);
 void randomize_section_name(PIMAGE_SECTION_HEADER section_header, PULONG seed);
 DWORD GetAlignedSize(DWORD size, DWORD alignment);
 void encrypt_buffer(PBYTE buffer, DWORD size, ULONG_PTR xor_key);
+std::vector<BYTE> generate_resource_section(DWORD VirtualAddress);
 
 int main(int argc, char** argv) {
     if (argc < 3) {
@@ -49,7 +50,7 @@ int main(int argc, char** argv) {
     ULONG seed = (ULONG)GetTickCount64();
     ULONG_PTR xor_key = (ULONG_PTR)fnRtlRandomEx(&seed) | ((ULONG_PTR)fnRtlRandomEx(&seed) << 32);
 
-    DWORD NumberOfSections = 2 + module_buffers.size();
+    DWORD NumberOfSections = 3 + module_buffers.size();
 
     // DOS header
     IMAGE_DOS_HEADER dos_header;
@@ -160,17 +161,34 @@ int main(int argc, char** argv) {
         section_header.Characteristics = IMAGE_SCN_MEM_READ | IMAGE_SCN_MEM_WRITE;
 
         // get next free virtual address and pointer to raw data (round up to nearest SectionAlignment)
-        NextVirtualAddress += GetAlignedSize(module_buffer.size(), nt_headers.OptionalHeader.SectionAlignment);
-        NextPointerToRawData += GetAlignedSize(module_buffer.size(), nt_headers.OptionalHeader.FileAlignment);
+        NextVirtualAddress += GetAlignedSize(section_header.Misc.VirtualSize, nt_headers.OptionalHeader.SectionAlignment);
+        NextPointerToRawData += GetAlignedSize(section_header.SizeOfRawData, nt_headers.OptionalHeader.FileAlignment);
 
         module_section_headers.push_back(section_header);
     }
 
+    // resource section
+    auto resource_section_data = generate_resource_section(NextVirtualAddress);
+    IMAGE_SECTION_HEADER resource_section_header;
+    memset(&resource_section_header, 0, sizeof(resource_section_header));
+    strcpy_s((char*)resource_section_header.Name, sizeof(resource_section_header.Name), ".rsrc");
+    resource_section_header.Misc.VirtualSize = resource_section_data.size();
+    resource_section_header.VirtualAddress = NextVirtualAddress;
+    resource_section_header.SizeOfRawData = resource_section_data.size();
+    resource_section_header.PointerToRawData = NextPointerToRawData;
+    resource_section_header.Characteristics = IMAGE_SCN_MEM_READ;
+
+    // get next free virtual address and pointer to raw data (round up to nearest SectionAlignment)
+    NextVirtualAddress += GetAlignedSize(resource_section_header.Misc.VirtualSize, nt_headers.OptionalHeader.SectionAlignment);
+    NextPointerToRawData += GetAlignedSize(resource_section_header.SizeOfRawData, nt_headers.OptionalHeader.FileAlignment);
+    
     // update NT headers
     nt_headers.OptionalHeader.SizeOfImage = NextVirtualAddress;
     nt_headers.OptionalHeader.SizeOfCode = initial_loader_section_header.SizeOfRawData + bootstrap_section_header.SizeOfRawData;
-    nt_headers.OptionalHeader.SizeOfInitializedData = initial_loader_section_header.SizeOfRawData + bootstrap_section_header.SizeOfRawData;\
+    nt_headers.OptionalHeader.SizeOfInitializedData = initial_loader_section_header.SizeOfRawData + bootstrap_section_header.SizeOfRawData;
     nt_headers.OptionalHeader.AddressOfEntryPoint = bootstrap_section_header.VirtualAddress;
+    nt_headers.OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_RESOURCE].VirtualAddress = resource_section_header.VirtualAddress;
+    nt_headers.OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_RESOURCE].Size = resource_section_header.SizeOfRawData;
 
     // write the PE file
     std::ofstream pe_file(output_file_path, std::ios::binary);
@@ -190,6 +208,7 @@ int main(int argc, char** argv) {
     pe_file.write((char*)&bootstrap_section_header, sizeof(bootstrap_section_header));
     for (auto& module_section_header : module_section_headers)
         pe_file.write((char*)&module_section_header, sizeof(module_section_header));
+    pe_file.write((char*)&resource_section_header, sizeof(resource_section_header));
 
     // write loader section data
     encrypt_buffer(initial_loader_buffer->data(), initial_loader_buffer->size(), xor_key);
@@ -206,6 +225,10 @@ int main(int argc, char** argv) {
         pe_file.seekp(module_section_headers[i].PointerToRawData);
         pe_file.write((char*)module_buffers[i].data(), module_buffers[i].size());
     }
+
+    // write resource section data
+    pe_file.seekp(resource_section_header.PointerToRawData);
+    pe_file.write((char*)resource_section_data.data(), resource_section_data.size());
 
     pe_file.close();
     return 0;
@@ -236,4 +259,77 @@ void encrypt_buffer(PBYTE buffer, DWORD size, ULONG_PTR xor_key) {
         auto data = (PULONG64)(buffer + i);
         *data ^= xor_key;
     }
+}
+
+std::vector<BYTE> generate_resource_section(DWORD VirtualAddress) {
+    std::vector<BYTE> data;
+
+    // same thing but with a template and automatic size calculation
+    auto allocate = [&]<class T>() -> T* {
+        auto offset = data.size();
+        data.resize(offset + sizeof(T));
+        return reinterpret_cast<T*>(&data[offset]);
+    };
+
+    PIMAGE_RESOURCE_DIRECTORY resource_directory = allocate.operator()<IMAGE_RESOURCE_DIRECTORY>();
+    resource_directory->Characteristics = 0;
+    resource_directory->TimeDateStamp = 0;
+    resource_directory->MajorVersion = 0;
+    resource_directory->MinorVersion = 0;
+    resource_directory->NumberOfNamedEntries = 0;
+    resource_directory->NumberOfIdEntries = 1;
+
+    // manifest resource
+    PIMAGE_RESOURCE_DIRECTORY_ENTRY resource_directory_entry = allocate.operator()<IMAGE_RESOURCE_DIRECTORY_ENTRY>();
+    resource_directory_entry->Id = (WORD)RT_MANIFEST;
+    resource_directory_entry->DataIsDirectory = TRUE;
+    resource_directory_entry->OffsetToDirectory = data.size();
+
+    PIMAGE_RESOURCE_DIRECTORY resource_directory2 = allocate.operator()<IMAGE_RESOURCE_DIRECTORY>();
+    resource_directory2->Characteristics = 0;
+    resource_directory2->TimeDateStamp = 0;
+    resource_directory2->MajorVersion = 0;
+    resource_directory2->MinorVersion = 0;
+    resource_directory2->NumberOfNamedEntries = 0;
+    resource_directory2->NumberOfIdEntries = 1;
+
+    PIMAGE_RESOURCE_DIRECTORY_ENTRY resource_directory_entry2 = allocate.operator()<IMAGE_RESOURCE_DIRECTORY_ENTRY>();
+    resource_directory_entry2->Id = 1;
+    resource_directory_entry2->DataIsDirectory = TRUE;
+    resource_directory_entry2->OffsetToDirectory = data.size();
+
+    PIMAGE_RESOURCE_DIRECTORY resource_directory3 = allocate.operator()<IMAGE_RESOURCE_DIRECTORY>();
+    resource_directory3->Characteristics = 0;
+    resource_directory3->TimeDateStamp = 0;
+    resource_directory3->MajorVersion = 0;
+    resource_directory3->MinorVersion = 0;
+    resource_directory3->NumberOfNamedEntries = 0;
+    resource_directory3->NumberOfIdEntries = 1;
+
+    PIMAGE_RESOURCE_DIRECTORY_ENTRY resource_directory_entry3 = allocate.operator()<IMAGE_RESOURCE_DIRECTORY_ENTRY>();
+    resource_directory_entry3->Id = 0x409; // english
+    resource_directory_entry3->DataIsDirectory = FALSE;
+    resource_directory_entry3->OffsetToData = data.size();
+
+    std::string manifest = R"(<?xml version='1.0' encoding='UTF-8' standalone='yes'?>
+<assembly xmlns='urn:schemas-microsoft-com:asm.v1' manifestVersion='1.0'>
+  <trustInfo xmlns="urn:schemas-microsoft-com:asm.v3">
+    <security>
+      <requestedPrivileges>
+        <requestedExecutionLevel level='requireAdministrator' uiAccess='false' />
+      </requestedPrivileges>
+    </security>
+  </trustInfo>
+</assembly>
+)";
+
+    PIMAGE_RESOURCE_DATA_ENTRY resource_data_entry = allocate.operator()<IMAGE_RESOURCE_DATA_ENTRY>();
+    resource_data_entry->OffsetToData = VirtualAddress + data.size();
+    resource_data_entry->Size = manifest.size();
+    resource_data_entry->CodePage = 0;
+    resource_data_entry->Reserved = 0;
+
+    data.insert(data.end(), manifest.begin(), manifest.end());
+
+    return data;
 }

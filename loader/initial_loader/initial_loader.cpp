@@ -244,6 +244,9 @@ extern "C" void initial_loader(ULONG_PTR xorKey) {
                 *data ^= new_xor_key;
             }
             break;
+        default:
+            // ignore other sections
+            break;
         }
 
         // calculate file size
@@ -276,6 +279,11 @@ extern "C" void initial_loader(ULONG_PTR xorKey) {
     // randomize section names
     for (int i = 0; i < nt_headers->FileHeader.NumberOfSections; i++) {
         auto section = &section_header[i];
+
+        // ignore sections with well known names
+        if (section->Name[0] == '.')
+            continue;
+
         // start at 1 to skip our "magic" section type indicator
         for (int j = 1; j < 8; j++) {
             section->Name[j] = (char)(fnRtlRandomEx(&seed) % 26 + 'a');
