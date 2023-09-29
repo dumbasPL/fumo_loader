@@ -1,0 +1,2 @@
+# use crlf line endings on all platforms
+* text=auto eol=crlf
