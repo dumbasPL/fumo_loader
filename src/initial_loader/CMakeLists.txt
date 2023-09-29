@@ -17,13 +17,13 @@ add_custom_command(
     COMMENT "Extracting initial_loader"
     DEPENDS shellcode_extractor
     DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/initial_loader.obj
-    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/initial_loader.bin
-    COMMAND shellcode_extractor ${CMAKE_CURRENT_BINARY_DIR}/initial_loader.obj initial_loader ${CMAKE_CURRENT_BINARY_DIR}/initial_loader.bin
+    OUTPUT ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${CMAKE_CFG_INTDIR}/initial_loader.bin
+    COMMAND shellcode_extractor ${CMAKE_CURRENT_BINARY_DIR}/initial_loader.obj initial_loader ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${CMAKE_CFG_INTDIR}/initial_loader.bin
 )
 
 add_custom_target(
     initial_loader
-    DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/initial_loader.bin
+    DEPENDS ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${CMAKE_CFG_INTDIR}/initial_loader.bin
     COMMENT "Building initial_loader.bin"
 )
-set_target_properties(initial_loader PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+set_target_properties(initial_loader PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${CMAKE_CFG_INTDIR})
