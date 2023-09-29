@@ -1,0 +1,46 @@
+name: Build and publish
+
+# run on pushes to master OR on version tag creation
+on:
+  push:
+    branches:
+      - master
+    tags:
+      - v*
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install CMake
+        uses: lukka/get-cmake@latest
+
+      - name: Build
+        uses: lukka/run-cmake@v10
+        with:
+          configurePreset: x64-windows
+          buildPreset: Release
+
+      - name: Publish release (version tag)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: marvinpinto/action-automatic-releases@latest
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          prerelease: false
+          files: |
+            build/bin/Release/*.exe
+
+      - name: Publish pre-release (push to master)
+        if: github.ref == 'refs/heads/master'
+        uses: marvinpinto/action-automatic-releases@latest
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          automatic_release_tag: latest
+          title: Development build
+          prerelease: true
+          draft: true
+          files: |
+            build/bin/Release/*.exe
