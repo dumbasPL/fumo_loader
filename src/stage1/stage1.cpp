@@ -2,6 +2,31 @@
 #include <filesystem>
 #include <fstream>
 
+bool get_debug_privileges() {
+    HANDLE token;
+    if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &token))
+        return false;
+
+    LUID luid;
+    if (!LookupPrivilegeValue(NULL, SE_DEBUG_NAME, &luid)) {
+        CloseHandle(token);
+        return false;
+    }
+
+    TOKEN_PRIVILEGES privileges;
+    privileges.PrivilegeCount = 1;
+    privileges.Privileges[0].Luid = luid;
+    privileges.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
+
+    if (!AdjustTokenPrivileges(token, FALSE, &privileges, sizeof(privileges), NULL, NULL)) {
+        CloseHandle(token);
+        return false;
+    }
+
+    CloseHandle(token);
+    return true;
+}
+
 int main(PFUMO_EMBEDDED_DATA embedded_data) {
     std::vector<BYTE> fumo_data;
     std::wstring fumo_file_path;
@@ -56,6 +81,9 @@ int main(PFUMO_EMBEDDED_DATA embedded_data) {
     if (isHvciEnabled())
         return fumo::error(ERR_STAGE1_HVCI_ENABLED, L"HyperVisor Code Integrity (HVCI) is enabled, please disable it and try again");
     
+    if(!get_debug_privileges())
+        return fumo::error(ERR_STAGE1_FAILED_TO_GET_DEBUG_PRIVILEGES, L"Failed to get debug privileges");
+
     auto error = init_driver(osv.dwBuildNumber);
     if (error != ERR_STAGE1_SUCCESS)
         return error;
