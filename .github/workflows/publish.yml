@@ -23,6 +23,11 @@ jobs:
         with:
           configurePreset: x64-windows
           buildPreset: Release
+      
+      - name: ZIP embedding tools
+        working-directory: build/bin/Release
+        run: |
+          7z a -tzip -mx=9 -r embedding_tools.zip fumo_encoder.exe fumo_generator.exe initial_loader.bin stage1.dll
 
       - name: Publish release (version tag)
         if: startsWith(github.ref, 'refs/tags/v')
@@ -32,7 +37,9 @@ jobs:
           prerelease: false
           draft: true
           files: |
-            build/bin/Release/*.exe
+            build/bin/Release/fumo.exe
+            build/bin/Release/fumo_encoder.exe
+            build/bin/Release/embedding_tools.zip
 
       - name: Publish pre-release (push to master)
         if: github.ref == 'refs/heads/master'
@@ -43,4 +50,6 @@ jobs:
           title: Development build
           prerelease: true
           files: |
-            build/bin/Release/*.exe
+            build/bin/Release/fumo.exe
+            build/bin/Release/fumo_encoder.exe
+            build/bin/Release/embedding_tools.zip
