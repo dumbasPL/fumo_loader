@@ -1,5 +1,0 @@
-add_executable(pe_generator pe_generator.cpp)
-target_compile_features(pe_generator PUBLIC c_std_17 cxx_std_20)
-target_compile_definitions(pe_generator PRIVATE UNICODE _UNICODE)
-target_include_directories(pe_generator PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../include)
-set_target_properties(pe_generator PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
