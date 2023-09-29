@@ -59,3 +59,8 @@ typedef struct _FUMO_DATA_HEADER {
     DWORD SettingsSize;
     DWORD DataSize;
 } FUMO_DATA_HEADER, *PFUMO_DATA_HEADER;
+
+typedef struct _FUMO_EMBEDDED_DATA {
+    PVOID Data;
+    DWORD Size;
+} FUMO_EMBEDDED_DATA, *PFUMO_EMBEDDED_DATA;

@@ -2,7 +2,8 @@
 #include <winternl.h>
 #include <lazy_importer.hpp>
 #include <xorstr.hpp>
-#include "bootstrap.h"
+#include <bootstrap.h>
+#include <fomo_common.h>
 
 NTSYSAPI ULONG RtlRandomEx(PULONG Seed);
 
@@ -35,7 +36,7 @@ __forceinline void inline_memcpy(PVOID dest, PVOID src, SIZE_T size) {
     }
 }
 
-__forceinline int map_encrypted_image(ULONG_PTR base, PIMAGE_SECTION_HEADER data_section) {
+__forceinline int map_encrypted_image(ULONG_PTR base, PFUMO_EMBEDDED_DATA embedded_data) {
     auto fnVirtualAlloc = LI_FN(VirtualAlloc).get();
     auto fnExitProcess = LI_FN(ExitProcess).get();
     auto fnLoadLibraryA = LI_FN(LoadLibraryA).get();
@@ -48,8 +49,7 @@ __forceinline int map_encrypted_image(ULONG_PTR base, PIMAGE_SECTION_HEADER data
     #define fnMessageBoxA(a, b, c, d)
 #endif
 
-    ULONG_PTR data_section_base = base + data_section->VirtualAddress;
-    auto nt_headers = (PIMAGE_NT_HEADERS)(data_section_base + ((PIMAGE_DOS_HEADER)data_section_base)->e_lfanew);
+    auto nt_headers = (PIMAGE_NT_HEADERS)(base + ((PIMAGE_DOS_HEADER)base)->e_lfanew);
 
     // allocate memory for section
     auto new_image_base = (ULONG_PTR)fnVirtualAlloc(nullptr, //(LPVOID)nt_headers->OptionalHeader.ImageBase,
@@ -63,7 +63,7 @@ __forceinline int map_encrypted_image(ULONG_PTR base, PIMAGE_SECTION_HEADER data
         auto section = &section_header[i];
         if (section->SizeOfRawData == 0)
             continue;
-        auto section_data = (PVOID)(data_section_base + section->PointerToRawData);
+        auto section_data = (PVOID)(base + section->PointerToRawData);
         inline_memcpy((PVOID)(new_image_base + section->VirtualAddress), section_data, section->SizeOfRawData);
     }
 
@@ -117,9 +117,9 @@ __forceinline int map_encrypted_image(ULONG_PTR base, PIMAGE_SECTION_HEADER data
     }
 
     // execute dll entry point
-    using DllMain = BOOL(WINAPI*)(HINSTANCE, DWORD, LPVOID);
+    using DllMain = BOOL(WINAPI*)(HINSTANCE, DWORD, PFUMO_EMBEDDED_DATA);
     auto dll_entry_point = (DllMain)(new_image_base + nt_headers->OptionalHeader.AddressOfEntryPoint);
-    auto success = dll_entry_point((HINSTANCE)new_image_base, DLL_PROCESS_ATTACH, nullptr);
+    auto success = dll_entry_point((HINSTANCE)new_image_base, DLL_PROCESS_ATTACH, embedded_data);
     if (!success)
         return ERR_FAILED_TO_EXECUTE_DLL_ENTRY_POINT;
     
@@ -140,14 +140,29 @@ __forceinline int map_encrypted_sections(ULONG_PTR base) {
     auto nt_headers = (PIMAGE_NT_HEADERS)(base + ((PIMAGE_DOS_HEADER)base)->e_lfanew);
     auto section_header = IMAGE_FIRST_SECTION(nt_headers);
 
+    FUMO_EMBEDDED_DATA embedded_data;
+    embedded_data.Data = nullptr;
+    embedded_data.Size = 0;
+
     // map encrypted sections
     for (int i = 0; i < nt_headers->FileHeader.NumberOfSections; i++) {
         auto section = &section_header[i];
         // only map sections that start with 'e' (encrypted)
         if (section->Name[0] != 'e')
             continue;
+        if (section->Misc.VirtualSize < 4)
+            EXIT_WITH_ERROR(ERR_FAILED_TO_MAP_ENCRYPTED_SECTION, "Failed to map encrypted section (to small)")
+        
+        ULONG_PTR section_base = base + section->VirtualAddress;
 
-        auto error = map_encrypted_image(base, section);
+        // check if this is a data section
+        if (*(DWORD*)section_base == FUMO_MAGIC) {
+            embedded_data.Data = (PVOID)section_base;
+            embedded_data.Size = section->Misc.VirtualSize;
+            continue;
+        }
+        
+        auto error = map_encrypted_image(section_base, &embedded_data);
         if (error != ERR_SUCCESS) {
             if (error != ERR_FAILED_TO_EXECUTE_DLL_ENTRY_POINT)
                 EXIT_WITH_ERROR(ERR_FAILED_TO_MAP_ENCRYPTED_SECTION, "Failed to map encrypted section");
