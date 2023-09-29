@@ -30,6 +30,7 @@ jobs:
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           prerelease: false
+          draft: true
           files: |
             build/bin/Release/*.exe
 
@@ -41,6 +42,5 @@ jobs:
           automatic_release_tag: latest
           title: Development build
           prerelease: true
-          draft: true
           files: |
             build/bin/Release/*.exe
