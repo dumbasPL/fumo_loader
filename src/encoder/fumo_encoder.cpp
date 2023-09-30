@@ -11,37 +11,36 @@
 #include <util.h>
 
 int main(int argc, char** argv) {
-    // usage: [input_file] [process_name] [wait_for_module1,[wait_for_module2,...]]
+    // usage: [input_file] [process_name] [wait_for_module1,[wait_for_module2,...]] [output_file]
 
     std::string input_file_name = [argc, argv]() {
-        std::cout << "Input file (DLL): ";
-        if (argc > 1) {
-            std::cout << argv[1] << std::endl;
+        if (argc > 1)
             return std::string(argv[1]);
-        }
+        std::cout << "Input file (DLL): ";
         std::string input_file_name;
         std::getline(std::cin, input_file_name);
         return input_file_name;
     }();
     std::string process_name = [argc, argv]() {
-        std::cout << "Target process name: ";
-        if (argc > 2) {
-            std::cout << argv[2] << std::endl;
+        if (argc > 2)
             return std::string(argv[2]);
-        }
+        std::cout << "Target process name: ";
         std::string process_name;
         std::getline(std::cin, process_name);
         return process_name;
     }();
     std::string wait_for_modules = [argc, argv]() {
-        std::cout << "Wait for modules (comma separated): ";
-        if (argc > 3) {
-            std::cout << argv[3] << std::endl;
+        if (argc > 3)
             return std::string(argv[3]);
-        }
+        std::cout << "Wait for modules (comma separated): ";
         std::string wait_for_modules;
         std::getline(std::cin, wait_for_modules);
         return wait_for_modules;
+    }();
+    std::string output_file_name = [argc, argv, input_file_name]() {
+        if (argc > 4)
+            return std::string(argv[4]);
+        return std::filesystem::path(input_file_name).replace_extension(".fumo").string();
     }();
 
     if (process_name.length() == 0) {
@@ -53,9 +52,6 @@ int main(int argc, char** argv) {
         std::cerr << "No wait modules specified, using default: kernel32.dll" << std::endl;
         wait_for_modules = "kernel32.dll";
     }
-    
-    // get output file name
-    std::string output_file_name = std::filesystem::path(input_file_name).replace_extension(".fumo").string();
     
     // read input file
     std::ifstream input_file(input_file_name, std::ios::binary);
