@@ -13,7 +13,7 @@ All in one kernel-based DLL injector
 - No open handles to the target process
 - No new threads in the target process (injects using APCs from kernel)
 - Compatible with:
-  - windows 10 20H1 to Windows 11 22H2 (x64) (in theory, only tested on W11 22H2)
+  - Windows 10 20H1 to Windows 11 22H2 (x64) (in theory, only tested on W11 22H2)
   - Secure boot
   - PatchGuard
   - Driver Signature Enforcement
@@ -34,10 +34,10 @@ All in one kernel-based DLL injector
 ## Caveats
 
 - (Currently) it does not clean any traces of the vulnerable driver
-  - Reboot before loading any "decent" anty-cheat if you don't feel like being insta banned
+  - Reboot before loading any "decent" anti-cheat if you don't feel like being insta banned
 - The target process needs to have a thread that we can schedule APCs on (this is usually not an issue outside of very simple hello world programs that only have one thread)
-- You might get random DEP violations because memory above 0x7FFF'FFFFFFFF is technically not valid user-mode memory (at least as far as windows API's are concerned, your CPU doesn't care and will happily execute it, that's the whole idea behind this loader)
-  - you will have to register an exception handler in your DLL that will catch the exception and return `EXCEPTION_CONTINUE_EXECUTION` whenever it encounters a DEP violation above 0x7FFF'FFFFFFFF
+- You might get random DEP violations because memory above 0x7FFF'FFFFFFFF is technically not valid user-mode memory (at least as far as Windows API's are concerned, your CPU doesn't care and will happily execute it, that's the whole idea behind this loader)
+  - You will have to register an exception handler in your DLL that will catch the exception and return `EXCEPTION_CONTINUE_EXECUTION` whenever it encounters a DEP violation above 0x7FFF'FFFFFFFF
 
 ## Usage
 
@@ -45,8 +45,8 @@ All in one kernel-based DLL injector
 
 1. Download the latest release or build it yourself
 2. Drag and drop a dll on to `fumo_encoder.exe`
-  1. fill out the process name
-  2. fill out what dll(s) to wait for before injecting
+  1. Fill out the process name
+  2. Fill out what dll(s) to wait for before injecting
 
 ### Inject
 
