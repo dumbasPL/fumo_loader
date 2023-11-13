@@ -104,3 +104,13 @@ Or use the CMake integration built into your IDE of choice
 ## License
 
 [MIT](LICENSE)
+
+## ~~Number of Pasters~~ Star History
+
+<a href="https://star-history.com/#dumbasPL/fumo_loader&Date">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=dumbasPL/fumo_loader&type=Date&theme=dark" />
+    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=dumbasPL/fumo_loader&type=Date" />
+    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=dumbasPL/fumo_loader&type=Date" />
+  </picture>
+</a>
