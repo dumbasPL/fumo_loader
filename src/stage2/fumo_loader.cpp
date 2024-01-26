@@ -2,7 +2,7 @@
 #include "stage2.h"
 #include <driver_interface.h>
 
-using fnLdrLoadDll = NTSTATUS(NTAPI*)(PWCHAR PathToFile, ULONG Flags, PUNICODE_STRING ModuleFileName, HMODULE* ModuleHandle);
+using fnLdrLoadDll = NTSTATUS(NTAPI*)(DWORD64, PULONG Flags, PUNICODE_STRING ModuleFileName, HMODULE* ModuleHandle);
 using fnLdrGetProcedureAddress = NTSTATUS(NTAPI*)(HMODULE ModuleHandle, PANSI_STRING FunctionName, WORD Ordinal, PVOID* FunctionAddress);
 using fnRtlAnsiStringToUnicodeString = decltype(&RtlAnsiStringToUnicodeString);
 using fnDllMain = BOOL(WINAPI*)(HMODULE hModule, DWORD dwReason, LPVOID lpReserved);
@@ -46,7 +46,8 @@ DWORD Shellcode(PMANUAL_MAPPING_DATA pMmData) {
         pMmData->RtlAnsiStringToUnicodeString(&unicode_module_name, &ansi_module_name, TRUE);
 
         HMODULE module_handle = nullptr;
-        pMmData->LdrLoadDll(nullptr, 0, &unicode_module_name, &module_handle);
+        ULONG flags = 0;
+        pMmData->LdrLoadDll(1, &flags, &unicode_module_name, &module_handle);
 
         auto original_first_thunk = (PIMAGE_THUNK_DATA)((ULONG_PTR)pMmData->ImageBase + import_descriptor->OriginalFirstThunk);
         auto first_thunk = (PIMAGE_THUNK_DATA)((ULONG_PTR)pMmData->ImageBase + import_descriptor->FirstThunk);
