@@ -53,20 +53,25 @@ DWORD Shellcode(PMANUAL_MAPPING_DATA pMmData) {
         auto first_thunk = (PIMAGE_THUNK_DATA)((ULONG_PTR)pMmData->ImageBase + import_descriptor->FirstThunk);
 
         while (original_first_thunk->u1.AddressOfData != 0) {
-            auto import_by_name = (PIMAGE_IMPORT_BY_NAME)((ULONG_PTR)pMmData->ImageBase + original_first_thunk->u1.AddressOfData);
-            auto function_name = (PCHAR)import_by_name->Name;
-
-            USHORT function_name_length = 0;
-            while (function_name[function_name_length] != 0)
-                function_name_length++;
-
-            ANSI_STRING ansi_function_name = {0};
-            ansi_function_name.Buffer = function_name;
-            ansi_function_name.Length = function_name_length;
-            ansi_function_name.MaximumLength = function_name_length + 1;
-
             PVOID function_address = nullptr;
-            pMmData->LdrGetProcedureAddress(module_handle, &ansi_function_name, 0, &function_address);
+            if (IMAGE_SNAP_BY_ORDINAL(original_first_thunk->u1.Ordinal)) {
+                auto function_ordinal = IMAGE_ORDINAL(original_first_thunk->u1.Ordinal);
+                pMmData->LdrGetProcedureAddress(module_handle, nullptr, function_ordinal, &function_address);
+            } else {
+                auto import_by_name = (PIMAGE_IMPORT_BY_NAME)((ULONG_PTR)pMmData->ImageBase + original_first_thunk->u1.AddressOfData);
+                auto function_name = (PCHAR)import_by_name->Name;
+
+                USHORT function_name_length = 0;
+                while (function_name[function_name_length] != 0)
+                    function_name_length++;
+
+                ANSI_STRING ansi_function_name = {0};
+                ansi_function_name.Buffer = function_name;
+                ansi_function_name.Length = function_name_length;
+                ansi_function_name.MaximumLength = function_name_length + 1;
+
+                pMmData->LdrGetProcedureAddress(module_handle, &ansi_function_name, 0, &function_address);
+            }
 
             first_thunk->u1.Function = (ULONG_PTR)function_address;
 
