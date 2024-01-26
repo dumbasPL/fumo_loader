@@ -1,11 +1,11 @@
 #include "memory.h"
 
 uint64_t GetProcessDirectoryTableBase(PEPROCESS pProcess) {
-	PUCHAR process = (PUCHAR)pProcess;
-	uint64_t process_dirbase = *(uint64_t*)(process + 0x28); // DirectoryTableBase
-	if (process_dirbase == 0)
-		process_dirbase = *(uint64_t*)(process + 0x388); // UserDirectoryTableBase
-	return process_dirbase;
+    PUCHAR process = (PUCHAR)pProcess;
+    uint64_t process_dirbase = *(uint64_t*)(process + 0x28); // DirectoryTableBase
+    if (process_dirbase == 0)
+        process_dirbase = *(uint64_t*)(process + 0x388); // UserDirectoryTableBase
+    return process_dirbase;
 }
 
 PVOID GetVirtualForPhysical(uint64_t PhysicalAddress) {
