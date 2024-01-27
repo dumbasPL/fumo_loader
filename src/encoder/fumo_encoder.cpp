@@ -9,6 +9,7 @@
 #include <ctime>
 #include <fomo_common.h>
 #include <util.h>
+#include <lz4.h>
 
 int main(int argc, char** argv) {
     // usage: [input_file] [process_name] [wait_for_module1,[wait_for_module2,...]] [output_file]
@@ -59,8 +60,18 @@ int main(int argc, char** argv) {
         std::cerr << "Failed to open input file:" << input_file_name << std::endl;
         return 1;
     }
-    std::vector<unsigned char> data;
+    std::vector<char> data;
     data.assign(std::istreambuf_iterator<char>(input_file), std::istreambuf_iterator<char>());
+
+    // compress data
+    std::vector<char> compressed_data;
+    compressed_data.resize(LZ4_compressBound(data.size()));
+    size_t compressed_size = LZ4_compress_default(data.data(), compressed_data.data(), data.size(), compressed_data.size());
+    if (compressed_size <= 0) {
+        std::cerr << "Failed to compress data" << std::endl;
+        return 1;
+    }
+    compressed_data.resize(compressed_size);
 
     // generate xor key
     std::srand(std::time(nullptr));
@@ -69,13 +80,13 @@ int main(int argc, char** argv) {
         xor_key |= (std::rand() % 256) << (i * 8);
 
     // pad to 8 bytes
-    int padding = 8 - (data.size() % 8);
+    int padding = 8 - (compressed_data.size() % 8);
     if (padding != 8)
-        data.insert(data.end(), padding, 0);
+        compressed_data.insert(compressed_data.end(), padding, 0);
 
-    // encrypt data
-    for (int i = 0; i < data.size(); i += sizeof(xor_key)) {
-        uint64_t* ptr = (uint64_t*)&data[i];
+    // encrypt compressed_data
+    for (int i = 0; i < compressed_data.size(); i += sizeof(xor_key)) {
+        uint64_t* ptr = (uint64_t*)&compressed_data[i];
         *ptr ^= xor_key;
     }
 
@@ -111,10 +122,12 @@ int main(int argc, char** argv) {
     header.Version = FUMO_DATA_VERSION;
     header.XorKey = xor_key;
     header.SettingsSize = loader_settings_data.size();
-    header.DataSize = data.size();
+    header.DataSize = compressed_data.size();
+    header.CompressedDataSize = compressed_size;
+    header.DecompressedDataSize = data.size();
     output_file.write((char*)&header, sizeof(header));
     output_file.write((char*)loader_settings_data.data(), loader_settings_data.size());
-    output_file.write((char*)data.data(), data.size());
+    output_file.write((char*)compressed_data.data(), compressed_data.size());
 
     output_file.close();
 

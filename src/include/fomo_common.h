@@ -5,7 +5,7 @@
 #define MIN_OS_BUILD_NUMBER 19041
 
 #define FUMO_MAGIC 'OMUF'
-#define FUMO_DATA_VERSION 0x00000001
+#define FUMO_DATA_VERSION 0x00000002
 #define FUMO_DRIVER_VERSION 0x00000002
 #define FUMO_HOOKED_DRIVER_NAME L"\\Driver\\Null"
 #define FUMO_HOOKED_DRIVER_NAME_USER L"\\\\.\\NUL"
@@ -58,6 +58,8 @@ typedef struct _FUMO_DATA_HEADER {
     DWORDLONG XorKey;
     DWORD SettingsSize;
     DWORD DataSize;
+    DWORD CompressedDataSize;
+    DWORD DecompressedDataSize;
 } FUMO_DATA_HEADER, *PFUMO_DATA_HEADER;
 
 typedef struct _FUMO_EMBEDDED_DATA {

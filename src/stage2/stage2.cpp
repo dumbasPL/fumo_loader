@@ -5,6 +5,7 @@
 #include <driver_interface.h>
 #include <util.h>
 #include <sstream>
+#include <lz4.h>
 
 std::wstring loader_process_name = L"";
 STAGE2_LOADER_DATA loader_data;
@@ -154,8 +155,14 @@ int main(HANDLE loader_process) {
         *ptr ^= xor_key;
     }
 
+    // decompress the data
+    auto decompressed_data = std::make_unique<char[]>(header->DecompressedDataSize);
+    auto decompressed_size = LZ4_decompress_safe((char*)data, decompressed_data.get(), header->CompressedDataSize, header->DecompressedDataSize);
+    if (decompressed_size <= 0)
+        return fumo::error(ERR_STAGE2_FAILED_TO_DECOMPRESS_DATA, L"Failed to decompress data");
+
     // let the magic happen
-    auto error = MapImage(&driver_ref, process_id, data);
+    auto error = MapImage(&driver_ref, process_id, decompressed_data.get());
     if (error != ERROR_SUCCESS)
         return error;
     

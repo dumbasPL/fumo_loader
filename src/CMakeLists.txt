@@ -1,3 +1,6 @@
+# disable C4711, C5045, C4820 (caused by lz4)
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /wd4711 /wd5045 /wd4820")
+
 CPMAddPackage(
     NAME xorstr
     GITHUB_REPOSITORY JustasMasiulis/xorstr
@@ -21,6 +24,17 @@ if (lazy_importer_ADDED)
     add_library(lazy_importer INTERFACE)
     target_include_directories(lazy_importer INTERFACE ${lazy_importer_SOURCE_DIR}/include)
 endif()
+
+CPMAddPackage(
+    NAME lz4
+    GITHUB_REPOSITORY lz4/lz4
+    VERSION 1.9.4
+    SOURCE_SUBDIR build/cmake
+    OPTIONS
+        "LZ4_BUILD_CLI OFF"
+        "LZ4_BUILD_LEGACY_LZ4C OFF"
+)
+find_package(lz4 REQUIRED)
 
 CPMAddPackage("gh:SergiusTheBest/FindWDK#master")
 list(APPEND CMAKE_MODULE_PATH "${FindWDK_SOURCE_DIR}/cmake")

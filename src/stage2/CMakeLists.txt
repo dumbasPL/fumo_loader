@@ -3,4 +3,4 @@ target_include_directories(stage2 PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../include
 target_compile_features(stage2 PUBLIC c_std_17 cxx_std_20)
 target_compile_options(stage2 PRIVATE /O1 /GS- /sdl- /guard:cf- /Zc:threadSafeInit-)
 target_compile_definitions(stage2 PRIVATE UNICODE _UNICODE)
-target_link_libraries(stage2 PRIVATE driver_interface)
+target_link_libraries(stage2 PRIVATE driver_interface lz4_static)
