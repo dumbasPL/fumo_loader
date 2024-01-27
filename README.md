@@ -6,7 +6,7 @@ All-in-one kernel-based DLL injector
 
 - Manual map a DLL into kernel memory and expose it to user mode via page table manipulation
 - Re-generate a unique, encrypted executable each time it is run and delete the old one
-- Store the target DLL in an encrypted form on disk (.fumo file)
+- Store the target DLL in a compressed and encrypted form on disk (.fumo file)
 - Tray icon and notifications that tell you about the status of the loader and allow you to abort the injection process
 - Wait for certain modules to be loaded in the target process before injecting
 - No running processes during injection (injects itself into a different process, explorer.exe by default)
@@ -93,6 +93,7 @@ Or use the CMake integration built into your IDE of choice
 - [lazy_importer](https://github.com/JustasMasiulis/lazy_importer) - inlined import resolution (used for position-independent code)
 - [xorstr](https://github.com/JustasMasiulis/xorstr) - inlined and encrypted strings (also used for position-independent code)
 - [FindWDK](https://github.com/SergiusTheBest/FindWDK) - CMake module for building Windows drivers
+- [lz4](https://github.com/lz4/lz4) - compression for the .fumo files
 - [CMake](https://cmake.org/) - amazing build system
 - [@slnchyt](https://www.pixiv.net/en/artworks/35678304) - the tray icon
 
