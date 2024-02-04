@@ -81,6 +81,9 @@ int main(PFUMO_EMBEDDED_DATA embedded_data) {
     if (isHvciEnabled())
         return fumo::error(ERR_STAGE1_HVCI_ENABLED, L"HyperVisor Code Integrity (HVCI) is enabled, please disable it and try again");
     
+    if (isKVAShadowEnabled())
+        return fumo::error(ERR_STAGE1_KVA_SHADOW_ENABLED, L"Kernel Virtual Address Shadow (KVAS) is enabled, please disable it and try again");
+
     if(!get_debug_privileges())
         return fumo::error(ERR_STAGE1_FAILED_TO_GET_DEBUG_PRIVILEGES, L"Failed to get debug privileges");
 

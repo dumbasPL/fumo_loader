@@ -15,6 +15,26 @@ typedef struct _STAGE2_LOADER_DATA {
     DWORD loader_pid;
 } STAGE2_LOADER_DATA, *PSTAGE2_LOADER_DATA;
 
+typedef struct _SYSTEM_KERNEL_VA_SHADOW_INFORMATION {
+    union {
+        ULONG KvaShadowFlags;
+        struct {
+            ULONG KvaShadowEnabled : 1;
+            ULONG KvaShadowUserGlobal : 1;
+            ULONG KvaShadowPcid : 1;
+            ULONG KvaShadowInvpcid : 1;
+            ULONG KvaShadowRequired : 1; // REDSTONE4
+            ULONG KvaShadowRequiredAvailable : 1;
+            ULONG InvalidPteBit : 6;
+            ULONG L1DataCacheFlushSupported : 1;
+            ULONG L1TerminalFaultMitigationPresent : 1;
+            ULONG Reserved : 18;
+        };
+    };
+} SYSTEM_KERNEL_VA_SHADOW_INFORMATION, *PSYSTEM_KERNEL_VA_SHADOW_INFORMATION;
+
+constexpr SYSTEM_INFORMATION_CLASS SystemKernelVaShadowInformation = (SYSTEM_INFORMATION_CLASS)196;
+
 extern "C" NTSYSAPI NTSTATUS NTAPI RtlGetVersion(
     _Out_ PRTL_OSVERSIONINFOW lpVersionInformation
 );
@@ -39,6 +59,14 @@ inline bool isHvciEnabled() {
     if (NT_SUCCESS(NtQuerySystemInformation(SystemCodeIntegrityInformation, &sci, sizeof(sci), NULL))) {
         return sci.CodeIntegrityOptions & CODEINTEGRITY_OPTION_ENABLED && 
           sci.CodeIntegrityOptions & CODEINTEGRITY_OPTION_HVCI_KMCI_ENABLED;
+    }
+    return false;
+}
+
+inline bool isKVAShadowEnabled() {
+    SYSTEM_KERNEL_VA_SHADOW_INFORMATION kvs = { 0 };
+    if (NT_SUCCESS(NtQuerySystemInformation(SystemKernelVaShadowInformation, &kvs, sizeof(kvs), NULL))) {
+        return kvs.KvaShadowEnabled;
     }
     return false;
 }
