@@ -10,7 +10,7 @@ NTSYSAPI ULONG RtlRandomEx(PULONG Seed);
 #define DEBUG
 
 #ifdef DEBUG
-#define EXIT_WITH_ERROR(error, message) {fnMessageBoxA(nullptr, xorstr_(message), xorstr_("Error"), MB_OK | MB_ICONERROR); fnExitProcess(error);}
+#define EXIT_WITH_ERROR(error, message) {fnMessageBoxA(nullptr, xorstr_(message), xorstr_("Error"), MB_OK | MB_ICONERROR | MB_SYSTEMMODAL); fnExitProcess(error);}
 #else
 #define EXIT_WITH_ERROR(error, message) {fnExitProcess(error);}
 #endif

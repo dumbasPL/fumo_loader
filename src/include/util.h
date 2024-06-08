@@ -105,12 +105,20 @@ inline DWORD find_process_by_name(LPCWSTR lpProcessName) {
 }
 
 namespace fumo {
-    template<class... Args>
-    int error(int code, const WCHAR* fmt, Args... args) {
-        std::wstring message = std::vformat(fmt, std::make_wformat_args(std::forward<decltype(args)>(args)...));
-        message.append(L"\n\nError code: " + std::to_wstring(code));
-        message.append(L"\nWin32 error: " + std::to_wstring(GetLastError()));
-        MessageBoxW(NULL, message.c_str(), L"FUMO LOADER ERROR", MB_OK | MB_ICONERROR);
+    template <typename... Args> 
+    std::wstring error_string(int code, std::wformat_string<Args...> fmt, Args&&... args) {
+        std::wstring message;
+        auto it = std::back_inserter(message);
+        std::format_to(it, fmt, std::forward<Args>(args)...);
+        std::format_to(it, L"\n\nFumo loader error: {}", code);
+        std::format_to(it, L"\nWin32 error: {}", GetLastError());
+        return message;
+    }
+
+    template <typename... Args> 
+    int error(int code, std::wformat_string<Args...> fmt, Args&&... args) {
+        auto message = error_string(code, fmt, std::forward<Args>(args)...);
+        MessageBoxW(NULL, message.c_str(), L"FUMO LOADER ERROR", MB_OK | MB_ICONERROR | MB_SYSTEMMODAL);
         return code;
     }
 }
