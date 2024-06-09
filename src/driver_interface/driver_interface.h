@@ -14,9 +14,9 @@ private:
     DriverInterface(const DriverInterface&) = delete;
     DriverInterface& operator=(const DriverInterface&) = delete;
 public:
-    static std::optional<std::reference_wrapper<DriverInterface>> Open(LPCWSTR lpFileName);
-    std::optional<ULONG> GetVersion();
+    static std::shared_ptr<fumo::DriverInterface> Open(LPCWSTR lpFileName);
     VOID Unload();
+    BOOL GetVersion(PULONG pVersion);
     PVOID AllocateKernelMemory(ULONG size);
     BOOL ExposeKernelMemory(ULONG pid, PVOID address, ULONG size);
     BOOL ExecuteCode(ULONG pid, PVOID address, PVOID argument);

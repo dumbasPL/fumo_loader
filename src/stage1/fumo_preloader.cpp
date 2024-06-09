@@ -1,7 +1,6 @@
 #include "fumo_preloader.h"
 #include <libKDU.h>
 #include <lazy_importer.hpp>
-#include <driver_interface.h>
 #include <fumo_drv_data.h>
 #include <stage2_data.h>
 
@@ -189,28 +188,27 @@ DWORD stage2_loader_shellcode(PSTAGE2_LOADER_DATA loader_data) {
 
 void stage2_loader_shellcode_end() {}
 
-int init_driver(DWORD osBuildNumber) {
-    auto driver = fumo::DriverInterface::Open(FUMO_HOOKED_DRIVER_NAME_USER);
-    if (!driver.has_value())
-        return fumo::error(ERR_STAGE1_FAILED_TO_OPEN_DRIVER, L"Failed to open driver");
-
-    auto& driver_ref = driver.value().get();
-
-    auto version = driver_ref.GetVersion();
-    if (!version.has_value()) {
+int init_driver(fumo::DriverInterface* pDriver, DWORD osBuildNumber, bool forceReload) {
+    ULONG version;
+    BOOL just_loaded = FALSE;
+    if (!pDriver->GetVersion(&version)) {
         auto error = load_driver(osBuildNumber);
         if (error != ERR_STAGE1_SUCCESS)
             return error;
 
-        version = driver_ref.GetVersion();
-        if (!version.has_value())
+        just_loaded = TRUE;
+        if (!pDriver->GetVersion(&version))
             return fumo::error(ERR_STAGE1_FAILED_TO_GET_DRIVER_VERSION, L"Failed to get driver version");
     }
 
-    if (version.value() != FUMO_DRIVER_VERSION) {
+    if (version != FUMO_DRIVER_VERSION || forceReload) {
+        // if the driver we just loaded reports a wrong version something has gone terribly wrong
+        if (just_loaded && !forceReload)
+            return fumo::error(ERR_STAGE1_LOADED_DERIVER_VERSION_MISMATCH, L"Driver version mismatch (expected: {}, found: {})", FUMO_DRIVER_VERSION, version);
+
         // unload the old driver and try again
-        driver_ref.Unload();
-        return init_driver(osBuildNumber);
+        pDriver->Unload();
+        return init_driver(pDriver, osBuildNumber, false);
     }
 
     return ERR_STAGE1_SUCCESS;

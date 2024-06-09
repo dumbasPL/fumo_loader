@@ -27,7 +27,7 @@ typedef struct _WAIT_FOR_PROCESS_DATA {
 } WAIT_FOR_PROCESS_DATA, *PWAIT_FOR_PROCESS_DATA;
 
 typedef struct _WAIT_FOR_MODULE_DATA {
-    fumo::DriverInterface* driver_interface;
+    std::shared_ptr<fumo::DriverInterface> driver_interface;
     LPCWSTR module_name;
     DWORD process_id;
     PVOID module_base;

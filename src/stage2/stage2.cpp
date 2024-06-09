@@ -23,17 +23,15 @@ int main(HANDLE loader_process) {
         return fumo::error(ERR_STAGE2_FAILED_TO_DELETE_LOADER, L"Failed to delete loader executable: {}", loader_process_name);
     
     auto driver = fumo::DriverInterface::Open(FUMO_HOOKED_DRIVER_NAME_USER);
-    if (!driver.has_value())
+    if (!driver)
         return fumo::error(ERR_STAGE2_FAILED_TO_OPEN_DRIVER, L"Failed to open driver");
 
-    auto& driver_ref = driver.value().get();
-
-    auto driver_version = driver_ref.GetVersion();
-    if (!driver_version.has_value())
+    ULONG driver_version;
+    if (!driver->GetVersion(&driver_version))
         return fumo::error(ERR_STAGE2_FAILED_TO_OPEN_DRIVER, L"Failed to get driver version");
 
-    if (driver_version.value() != FUMO_DRIVER_VERSION)
-        return fumo::error(ERR_STAGE2_INVALID_DRIVER_VERSION, L"Invalid driver version (expected: {}, found: {})", FUMO_DRIVER_VERSION, driver_version.value());
+    if (driver_version != FUMO_DRIVER_VERSION)
+        return fumo::error(ERR_STAGE2_INVALID_DRIVER_VERSION, L"Invalid driver version (expected: {}, found: {})", FUMO_DRIVER_VERSION, driver_version);
     
     PFUMO_DATA_HEADER header = (PFUMO_DATA_HEADER)loader_data.fumo_data_base;
 
@@ -107,7 +105,7 @@ int main(HANDLE loader_process) {
     for (auto& module : wait_for_modules) {
         std::wstring module_name = convert_to_wstring(module);
         WAIT_FOR_MODULE_DATA wait_for_module_data;
-        wait_for_module_data.driver_interface = &driver_ref;
+        wait_for_module_data.driver_interface = driver;
         wait_for_module_data.process_id = process_id;
         wait_for_module_data.module_base = 0;
         wait_for_module_data.module_name = module_name.c_str();
@@ -162,7 +160,7 @@ int main(HANDLE loader_process) {
         return fumo::error(ERR_STAGE2_FAILED_TO_DECOMPRESS_DATA, L"Failed to decompress data");
 
     // let the magic happen
-    auto error = MapImage(&driver_ref, process_id, decompressed_data.get());
+    auto error = MapImage(driver.get(), process_id, decompressed_data.get());
     if (error != ERROR_SUCCESS)
         return error;
     

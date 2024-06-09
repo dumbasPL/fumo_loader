@@ -1,6 +1,7 @@
 #pragma once
 #include <util.h>
 #include <fomo_common.h>
+#include <driver_interface.h>
 #include <vector>
 
 #define ERR_STAGE1_SUCCESS 0
@@ -13,6 +14,7 @@
 #define ERR_STAGE1_FAILED_TO_MAP_DRIVER 100
 #define ERR_STAGE1_FAILED_TO_OPEN_DRIVER 101
 #define ERR_STAGE1_FAILED_TO_GET_DRIVER_VERSION 102
+#define ERR_STAGE1_LOADED_DERIVER_VERSION_MISMATCH 103
 #define ERR_STAGE1_FAILED_TO_FIND_PROCESS 150
 #define ERR_STAGE1_FAILED_TO_OPEN_PROCESS 151
 #define ERR_STAGE1_FAILED_TO_ALLOCATE_MEMORY 200
@@ -20,7 +22,7 @@
 #define ERR_STAGE1_FAILED_TO_WRITE_MEMORY 202
 #define ERR_STAGE1_FAILED_TO_EXECUTE_SHELLCODE 203
 
-int init_driver(DWORD osBuildNumber);
+int init_driver(fumo::DriverInterface* pDriver, DWORD osBuildNumber, bool forceReload = false);
 int load_driver(DWORD osBuildNumber);
 std::wstring get_proces_name(HANDLE process);
 DWORD find_process_by_name(LPCWSTR lpProcessName);

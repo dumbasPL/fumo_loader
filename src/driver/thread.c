@@ -48,7 +48,6 @@ NTSTATUS FindProcessThread(PEPROCESS pProcess, PETHREAD* ppThread) {
     NTSTATUS status = EnumProcesses(&Processes, SystemProcessInformation);
     if (!NT_SUCCESS(status)) {
         Log("Failed to enumerate processes (0x%08X)", status);
-        ExFreePoolWithTag(Processes, POOL_TAG);
         return status;
     }
 

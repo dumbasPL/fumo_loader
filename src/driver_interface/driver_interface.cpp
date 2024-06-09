@@ -1,22 +1,12 @@
 #include "driver_interface.h"
 
-std::optional<std::reference_wrapper<fumo::DriverInterface>> fumo::DriverInterface::Open(LPCWSTR lpFileName) {
+std::shared_ptr<fumo::DriverInterface> fumo::DriverInterface::Open(LPCWSTR lpFileName) {
     HANDLE hDevice = CreateFileW(lpFileName, GENERIC_WRITE, FILE_SHARE_WRITE, nullptr, OPEN_EXISTING, 0, nullptr);
     if (hDevice == INVALID_HANDLE_VALUE) {
-        return std::nullopt;
+        return nullptr;
     }
-    return std::optional<std::reference_wrapper<fumo::DriverInterface>>(*new DriverInterface(hDevice));
-}
-
-std::optional<ULONG> fumo::DriverInterface::GetVersion() {
-    IO_VERSION_RESPONSE_DATA version_response = {0};
-    if (!DeviceIoControl(hDevice, IO_VERSION_REQUEST, 
-        nullptr, 0, 
-        &version_response, sizeof(version_response), 
-        nullptr, nullptr)) {
-        return std::nullopt;
-    }
-    return version_response.Version;
+    // not using make_shared because the constructor is private
+    return std::shared_ptr<fumo::DriverInterface>(new fumo::DriverInterface(hDevice));
 }
 
 VOID fumo::DriverInterface::Unload() {
@@ -24,6 +14,18 @@ VOID fumo::DriverInterface::Unload() {
         nullptr, 0, 
         nullptr, 0, 
         nullptr, nullptr);
+}
+
+BOOL fumo::DriverInterface::GetVersion(PULONG pVersion) {
+    IO_VERSION_RESPONSE_DATA version_response = {0};
+    if (!DeviceIoControl(hDevice, IO_VERSION_REQUEST, 
+        nullptr, 0, 
+        &version_response, sizeof(version_response), 
+        nullptr, nullptr)) {
+        return FALSE;
+    }
+    *pVersion = version_response.Version;
+    return TRUE;
 }
 
 PVOID fumo::DriverInterface::AllocateKernelMemory(ULONG size) {

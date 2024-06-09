@@ -87,7 +87,11 @@ int main(PFUMO_EMBEDDED_DATA embedded_data) {
     if(!get_debug_privileges())
         return fumo::error(ERR_STAGE1_FAILED_TO_GET_DEBUG_PRIVILEGES, L"Failed to get debug privileges");
 
-    auto error = init_driver(osv.dwBuildNumber);
+    auto driver = fumo::DriverInterface::Open(FUMO_HOOKED_DRIVER_NAME_USER);
+    if (!driver)
+        return fumo::error(ERR_STAGE1_FAILED_TO_OPEN_DRIVER, L"Failed to open driver");
+
+    auto error = init_driver(driver.get(), osv.dwBuildNumber, true);
     if (error != ERR_STAGE1_SUCCESS)
         return error;
     
