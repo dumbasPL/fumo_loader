@@ -49,7 +49,7 @@ TrayIcon::TrayIcon(std::wstring name) : name(name) {
         window_class_name += (wchar_t)(L'A' + rand() % 26);
     
     // start the tray icon message loop in a new thread
-    HANDLE hThread = CreateThread(NULL, 0, [](LPVOID lpParam) -> DWORD {
+    hIconThread = CreateThread(NULL, 0, [](LPVOID lpParam) -> DWORD {
         TrayIcon* tray_icon = (TrayIcon*)lpParam;
 
         // Register the window class
@@ -82,9 +82,8 @@ TrayIcon::TrayIcon(std::wstring name) : name(name) {
     }, this, 0, NULL);
 
     // wait for the window to be created or for the thread to exit
-    HANDLE handles[2] = { hCancelEvent, hThread };
+    HANDLE handles[2] = { hCancelEvent, hIconThread };
     DWORD wait_result = WaitForMultipleObjects(2, handles, FALSE, INFINITE);
-    CloseHandle(hThread);
     ResetEvent(hCancelEvent);
 
     if (wait_result != WAIT_OBJECT_0) {
@@ -95,6 +94,11 @@ TrayIcon::TrayIcon(std::wstring name) : name(name) {
 
 TrayIcon::~TrayIcon() {
     destroy();
+    // wait for the thread to exit
+    if (hIconThread != NULL) {
+        WaitForSingleObject(hIconThread, INFINITE);
+        CloseHandle(hIconThread);
+    }
 }
 
 void TrayIcon::destroy() {

@@ -10,6 +10,7 @@ private:
     HWND hwnd = NULL;
     UINT uID = 1;
     HANDLE hCancelEvent = NULL;
+    HANDLE hIconThread = NULL;
 public:
     TrayIcon(std::wstring name);
     ~TrayIcon();
