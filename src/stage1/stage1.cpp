@@ -2,32 +2,7 @@
 #include <filesystem>
 #include <fstream>
 
-bool get_debug_privileges() {
-    HANDLE token;
-    if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &token))
-        return false;
-
-    LUID luid;
-    if (!LookupPrivilegeValue(NULL, SE_DEBUG_NAME, &luid)) {
-        CloseHandle(token);
-        return false;
-    }
-
-    TOKEN_PRIVILEGES privileges;
-    privileges.PrivilegeCount = 1;
-    privileges.Privileges[0].Luid = luid;
-    privileges.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
-
-    if (!AdjustTokenPrivileges(token, FALSE, &privileges, sizeof(privileges), NULL, NULL)) {
-        CloseHandle(token);
-        return false;
-    }
-
-    CloseHandle(token);
-    return true;
-}
-
-int main(PFUMO_EMBEDDED_DATA embedded_data) {
+int stage1(PFUMO_EMBEDDED_DATA embedded_data) {
     std::vector<BYTE> fumo_data;
     std::wstring fumo_file_path;
 
@@ -76,22 +51,24 @@ int main(PFUMO_EMBEDDED_DATA embedded_data) {
     RtlGetVersion((PRTL_OSVERSIONINFOW)&osv);
 
     if (osv.dwMajorVersion < MIN_OS_MAJOR_VERSION || osv.dwBuildNumber < MIN_OS_BUILD_NUMBER)
-        return fumo::error(ERR_STAGE1_UNSUPPORTED_OS, L"Unsupported OS version: {}.{}.{}", osv.dwMajorVersion, osv.dwMinorVersion, osv.dwBuildNumber);
-
-    if (isHvciEnabled())
-        return fumo::error(ERR_STAGE1_HVCI_ENABLED, L"HyperVisor Code Integrity (HVCI) is enabled, please disable it and try again");
+        return fumo::error(ERR_STAGE1_UNSUPPORTED_OS, L"Unsupported OS version: {}.{}.{}.\nUpdate windows and try again", osv.dwMajorVersion, osv.dwMinorVersion, osv.dwBuildNumber);
     
-    if (isKVAShadowEnabled())
-        return fumo::error(ERR_STAGE1_KVA_SHADOW_ENABLED, L"Kernel Virtual Address Shadow (KVAS) is enabled, please disable it and try again");
+    int status = disable_spyware();
+    if (status != ERR_STAGE1_SUCCESS)
+        return status;
+    
+    status = disable_mitigations();
+    if (status != ERR_STAGE1_SUCCESS)
+        return status;
 
-    if(!get_debug_privileges())
+    if(!get_privilege(SE_DEBUG_NAME))
         return fumo::error(ERR_STAGE1_FAILED_TO_GET_DEBUG_PRIVILEGES, L"Failed to get debug privileges");
 
     auto driver = fumo::DriverInterface::Open(FUMO_HOOKED_DRIVER_NAME_USER);
     if (!driver)
         return fumo::error(ERR_STAGE1_FAILED_TO_OPEN_DRIVER, L"Failed to open driver");
 
-    auto error = init_driver(driver.get(), osv.dwBuildNumber, true);
+    auto error = init_driver(driver.get(), osv.dwBuildNumber);
     if (error != ERR_STAGE1_SUCCESS)
         return error;
     
@@ -113,5 +90,5 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved) {
     if (fdwReason != DLL_PROCESS_ATTACH)
         return 0;
 
-    return main((PFUMO_EMBEDDED_DATA)lpvReserved) == ERR_STAGE1_SUCCESS;
+    return stage1((PFUMO_EMBEDDED_DATA)lpvReserved) == ERR_STAGE1_SUCCESS;
 }

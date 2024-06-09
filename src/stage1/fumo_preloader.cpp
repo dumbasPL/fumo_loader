@@ -221,3 +221,28 @@ int load_driver(DWORD osBuildNumber) {
 
     return ERR_STAGE1_SUCCESS;
 }
+
+bool get_privilege(const TCHAR* Name) {
+    HANDLE token;
+    if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &token))
+        return false;
+
+    LUID luid;
+    if (!LookupPrivilegeValue(NULL, Name, &luid)) {
+        CloseHandle(token);
+        return false;
+    }
+
+    TOKEN_PRIVILEGES privileges;
+    privileges.PrivilegeCount = 1;
+    privileges.Privileges[0].Luid = luid;
+    privileges.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
+
+    if (!AdjustTokenPrivileges(token, FALSE, &privileges, sizeof(privileges), NULL, NULL)) {
+        CloseHandle(token);
+        return false;
+    }
+
+    CloseHandle(token);
+    return true;
+}

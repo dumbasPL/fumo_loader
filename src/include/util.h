@@ -6,6 +6,7 @@
 #include <format>
 #include <sstream>
 #include <vector>
+#include <array>
 #include <locale>
 #include <codecvt>
 
@@ -51,24 +52,6 @@ inline std::vector<std::string> split(std::string text, char delim) {
 inline std::wstring convert_to_wstring(const std::string &str) {
     std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t> conv;
     return conv.from_bytes(str);
-}
-
-inline bool isHvciEnabled() {
-    SYSTEM_CODEINTEGRITY_INFORMATION sci = { 0 };
-    sci.Length = sizeof(sci);
-    if (NT_SUCCESS(NtQuerySystemInformation(SystemCodeIntegrityInformation, &sci, sizeof(sci), NULL))) {
-        return sci.CodeIntegrityOptions & CODEINTEGRITY_OPTION_ENABLED && 
-          sci.CodeIntegrityOptions & CODEINTEGRITY_OPTION_HVCI_KMCI_ENABLED;
-    }
-    return false;
-}
-
-inline bool isKVAShadowEnabled() {
-    SYSTEM_KERNEL_VA_SHADOW_INFORMATION kvs = { 0 };
-    if (NT_SUCCESS(NtQuerySystemInformation(SystemKernelVaShadowInformation, &kvs, sizeof(kvs), NULL))) {
-        return kvs.KvaShadowEnabled;
-    }
-    return false;
 }
 
 inline std::wstring get_proces_name(HANDLE process) {
