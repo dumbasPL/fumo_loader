@@ -1,10 +1,6 @@
 #pragma once
 #include "imports.h"
 
-#ifndef NO_FUMO_DRIVER_DEBUG
-#define FUMO_DRIVER_DEBUG
-#endif
-
 #ifdef FUMO_DRIVER_DEBUG
 
 // FUMO

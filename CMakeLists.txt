@@ -14,4 +14,6 @@ endif()
 set(CPM_SOURCE_CACHE "${CMAKE_SOURCE_DIR}/.cache/cpm")
 include(cmake/CPM.cmake)
 
+set(FUMO_DRIVER_DEBUG OFF CACHE BOOL "Enable driver debug logs/force reload")
+
 add_subdirectory(src)

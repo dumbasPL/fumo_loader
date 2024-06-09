@@ -2,6 +2,12 @@
 #include <filesystem>
 #include <fstream>
 
+#ifdef FUMO_DRIVER_DEBUG
+#define FORCE_RELOAD_DRIVER true
+#else
+#define FORCE_RELOAD_DRIVER false
+#endif
+
 int stage1(PFUMO_EMBEDDED_DATA embedded_data) {
     std::vector<BYTE> fumo_data;
     std::wstring fumo_file_path;
@@ -68,7 +74,7 @@ int stage1(PFUMO_EMBEDDED_DATA embedded_data) {
     if (!driver)
         return fumo::error(ERR_STAGE1_FAILED_TO_OPEN_DRIVER, L"Failed to open driver");
 
-    auto error = init_driver(driver.get(), osv.dwBuildNumber);
+    auto error = init_driver(driver.get(), osv.dwBuildNumber, FORCE_RELOAD_DRIVER);
     if (error != ERR_STAGE1_SUCCESS)
         return error;
     

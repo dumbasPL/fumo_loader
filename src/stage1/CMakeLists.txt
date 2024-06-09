@@ -22,3 +22,7 @@ target_compile_definitions(stage1 PRIVATE UNICODE _UNICODE)
 target_compile_options(stage1 PRIVATE /O1 /GS- /sdl- /guard:cf- /Zc:threadSafeInit-)
 target_link_libraries(stage1 PUBLIC ntdll libKDU driver_interface lazy_importer)
 set_target_properties(stage1 PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
+
+if (FUMO_DRIVER_DEBUG)
+    target_compile_definitions(stage1 PRIVATE -DFUMO_DRIVER_DEBUG)
+endif()
