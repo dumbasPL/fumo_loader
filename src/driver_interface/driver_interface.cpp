@@ -84,6 +84,16 @@ BOOL fumo::DriverInterface::FindModule(ULONG pid, LPCWSTR lpModuleName, PVOID* A
     return TRUE;
 }
 
+BOOL fumo::DriverInterface::DeleteShadow(ULONG pid) {
+    IO_DELETE_SHADOW_REQUEST_DATA delete_shadow_request = {0};
+    delete_shadow_request.Pid = pid;
+
+    return DeviceIoControl(hDevice, IO_DELETE_SHADOW_REQUEST, 
+        &delete_shadow_request, sizeof(delete_shadow_request), 
+        nullptr, 0, 
+        nullptr, nullptr);
+}
+
 fumo::DriverInterface::~DriverInterface() {
     std::cout << "Closing handle" << std::endl;
     if (hDevice != INVALID_HANDLE_VALUE) {

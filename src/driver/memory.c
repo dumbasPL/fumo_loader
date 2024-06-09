@@ -1,8 +1,14 @@
 #include "memory.h"
+#include "signature.h"
 
 uint64_t GetProcessDirectoryTableBase(PEPROCESS pProcess) {
     PUCHAR process = (PUCHAR)pProcess;
     return *(uint64_t*)(process + 0x28); // DirectoryTableBase;
+}
+
+VOID SetAddressPolicy(PEPROCESS pProcess, UCHAR AddressPolicy) {
+    PUCHAR process = (PUCHAR)pProcess;
+    *(UCHAR*)(process + 0x390) = AddressPolicy;
 }
 
 PVOID GetVirtualForPhysical(uint64_t PhysicalAddress) {
@@ -92,6 +98,154 @@ uint64_t VirtToPhys(uint64_t DirectoryTableBase, PVOID Va) {
     Pa += (uint64_t)Va & (0x1000 - 1);
     
     return Pa;
+}
+
+PVOID ResolveRelativeAddress(PVOID Instruction, ULONG Offset) {
+    if (!Instruction)
+        return NULL;
+
+    PVOID jmp = (PUCHAR)Instruction + Offset;
+    LONG rel = *(PLONG)jmp;
+    return (PUCHAR)jmp + sizeof(LONG) + rel;
+}
+
+PVOID _KeKvaShadowingActive = NULL;
+ULONG KeKvaShadowingActive() {
+    // failed to find KeKvaShadowingActive
+    if (_KeKvaShadowingActive == (PVOID)0x1)
+        return FALSE;
+
+    if (!_KeKvaShadowingActive) {
+        ULONG ntoskrnlSize = 0;
+        PVOID pNtoskrnl = FindKernelModule("ntoskrnl.exe", &ntoskrnlSize);
+        if (!pNtoskrnl) {
+            Log("Failed to find ntoskrnl.exe");
+            _KeKvaShadowingActive = (PVOID)0x1;
+            return FALSE;
+        }
+
+        Log("ntoskrnl.exe found at 0x%p with size 0x%X", pNtoskrnl, ntoskrnlSize);
+        PVOID found = FindPattern(pNtoskrnl, ntoskrnlSize, "41 89 1E E8 ? ? ? ? 44 8D ? ? 41");
+        found = ResolveRelativeAddress(found, 4);
+        if (!found) {
+            Log("Failed to find KeKvaShadowingActive");
+            _KeKvaShadowingActive = (PVOID)0x1;
+            return FALSE;
+        }
+
+        _KeKvaShadowingActive = found;
+    }
+
+    return ((ULONG(*)())_KeKvaShadowingActive)();
+}
+
+PVOID _MiDeleteProcessShadow = NULL;
+BOOL MiDeleteProcessShadow(PEPROCESS pProcess, BOOL b) {
+    // failed to find MiDeleteProcessShadow
+    if (_MiDeleteProcessShadow == (PVOID)0x1)
+        return FALSE;
+
+    if (!_MiDeleteProcessShadow) {
+        ULONG ntoskrnlSize = 0;
+        PVOID pNtoskrnl = FindKernelModule("ntoskrnl.exe", &ntoskrnlSize);
+        if (!pNtoskrnl) {
+            Log("Failed to find ntoskrnl.exe");
+            _MiDeleteProcessShadow = (PVOID)0x1;
+            return FALSE;
+        }
+
+        PVOID found = FindPattern(pNtoskrnl, ntoskrnlSize, "E8 ? ? ? ? F0 0F BA AE ? ? ? ? ? 0F 82");
+        found = ResolveRelativeAddress(found, 1);
+        if (!found) {
+            Log("Failed to find MiDeleteProcessShadow");
+            _MiDeleteProcessShadow = (PVOID)0x1;
+            return FALSE;
+        }
+
+        _MiDeleteProcessShadow = found;
+    }
+
+    ((BOOL(*)(PEPROCESS, BOOL))_MiDeleteProcessShadow)(pProcess, b);
+    return TRUE;
+}
+
+PVOID _KeSynchronizeAddressPolicy = NULL;
+BOOL KeSynchronizeAddressPolicy(PEPROCESS pProcess) {
+    // failed to find KeSynchronizeAddressPolicy
+    if (_KeSynchronizeAddressPolicy == (PVOID)0x1)
+        return FALSE;
+
+    if (!_KeSynchronizeAddressPolicy) {
+        ULONG ntoskrnlSize = 0;
+        PVOID pNtoskrnl = FindKernelModule("ntoskrnl.exe", &ntoskrnlSize);
+        if (!pNtoskrnl) {
+            Log("Failed to find ntoskrnl.exe");
+            _KeSynchronizeAddressPolicy = (PVOID)0x1;
+            return FALSE;
+        }
+
+        PVOID found = FindPattern(pNtoskrnl, ntoskrnlSize, "E8 ? ? ? ? F0 0F BA AE ? ? ? ? ? 72");
+        found = ResolveRelativeAddress(found, 1);
+        if (!found) {
+            Log("Failed to find KeSynchronizeAddressPolicy");
+            _KeSynchronizeAddressPolicy = (PVOID)0x1;
+            return FALSE;
+        }
+
+        _KeSynchronizeAddressPolicy = found;
+    }
+
+    ((VOID(*)(PEPROCESS))_KeSynchronizeAddressPolicy)(pProcess);
+    return TRUE;
+}
+
+PVOID _MiWritePteShadow = NULL;
+BOOL MiWritePteShadow(PTE* pte, uint64_t value) {
+    // failed to find MiWritePteShadow
+    if (_MiWritePteShadow == (PVOID)0x1)
+        return FALSE;
+
+    if (!_MiWritePteShadow) {
+        ULONG ntoskrnlSize = 0;
+        PVOID pNtoskrnl = FindKernelModule("ntoskrnl.exe", &ntoskrnlSize);
+        if (!pNtoskrnl) {
+            Log("Failed to find ntoskrnl.exe");
+            _MiWritePteShadow = (PVOID)0x1;
+            return FALSE;
+        }
+
+        PVOID found = FindPattern(pNtoskrnl, ntoskrnlSize, "48 83 EC ? 4C 8B C9 E8 ? ? ? ? 85 C0 74 ? 65 48 8B 04 25");
+        if (!found) {
+            Log("Failed to find MiWritePteShadow");
+            _MiWritePteShadow = (PVOID)0x1;
+            return FALSE;
+        }
+
+        _MiWritePteShadow = found;
+    }
+
+    ((VOID(*)(PTE*, uint64_t))_MiWritePteShadow)(pte, value);
+}
+
+BOOL DeleteProcessShadow(PEPROCESS pProcess) {
+    return TRUE;
+    if (!KeKvaShadowingActive())
+        return TRUE;
+    
+    Log("Deleting process shadow");
+    
+    SetAddressPolicy(pProcess, 1);
+
+    KAPC_STATE ApcState;
+    KeStackAttachProcess(pProcess, &ApcState);
+
+    BOOL res = KeSynchronizeAddressPolicy(pProcess);
+    if (res)
+        res = MiDeleteProcessShadow(pProcess, TRUE);
+
+    KeUnstackDetachProcess(&ApcState);
+
+    return res;
 }
 
 BOOL ExposeKernelMemoryToProcess(PEPROCESS pProcess, PVOID Address, SIZE_T Size) {

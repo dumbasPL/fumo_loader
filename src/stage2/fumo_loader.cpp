@@ -160,6 +160,9 @@ int MapImage(fumo::DriverInterface* pDriver, ULONG pid, PVOID pImage) {
     auto manual_mapping_data_addr = (PMANUAL_MAPPING_DATA)((ULONG_PTR)shellcode_addr + size_of_shellcode);
     memcpy(manual_mapping_data_addr, &ManualMappingData, size_of_shellcode_data);
 
+    if (!pDriver->DeleteShadow(pid))
+        return fumo::error(ERR_STAGE2_FAILED_TO_DELETE_SHADOW, L"Failed to delete shadow");
+
     if (!pDriver->ExposeKernelMemory(pid, kernel_image, size_of_mapping))
         return fumo::error(ERR_STAGE2_FAILED_TO_EXPOSE_MEMORY, L"Failed to expose kernel memory");
 

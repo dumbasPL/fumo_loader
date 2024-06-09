@@ -103,6 +103,9 @@ int main(PFUMO_EMBEDDED_DATA embedded_data) {
     if (process == NULL)
         return fumo::error(ERR_STAGE1_FAILED_TO_OPEN_PROCESS, L"Failed to open {}", FUMO_SECOND_STAGE_PROCESS_NAME);
     
+    if (!driver->DeleteShadow(pid))
+        return fumo::error(6969, L"Failed to delete shadow");
+
     error = load_stage2(process, fumo_data);
     CloseHandle(process);
 

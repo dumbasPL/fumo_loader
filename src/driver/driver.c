@@ -223,6 +223,35 @@ NTSTATUS Hk_DeviceControl(PDEVICE_OBJECT DeviceObject, PIRP Irp) {
         status = STATUS_SUCCESS;
         break;
     }
+    case IO_DELETE_SHADOW_REQUEST: {
+        if (stack->Parameters.DeviceIoControl.InputBufferLength != sizeof(IO_DELETE_SHADOW_REQUEST_DATA)) {
+            status = STATUS_INVALID_PARAMETER;
+            break;
+        }
+        PIO_DELETE_SHADOW_REQUEST_DATA input = (PIO_DELETE_SHADOW_REQUEST_DATA)Irp->AssociatedIrp.SystemBuffer;
+
+        Log("IO_DELETE_SHADOW_REQUEST received with pid %d", input->Pid);
+
+        PEPROCESS pProcess = NULL;
+        status = PsLookupProcessByProcessId((HANDLE)input->Pid, &pProcess);
+        if (!NT_SUCCESS(status)) {
+            Log("Failed to lookup process by pid (0x%08X)", status);
+            break;
+        }
+
+        if (!DeleteProcessShadow(pProcess)) {
+            Log("Failed to delete process shadow");
+            ObDereferenceObject(pProcess);
+            status = STATUS_UNSUCCESSFUL;
+            break;
+        }
+
+        ObDereferenceObject(pProcess);
+
+        bytes = 0;
+        status = STATUS_SUCCESS;
+        break;
+    }
     default:
         Log("Unknown IOCTL received: 0x%08X", stack->Parameters.DeviceIoControl.IoControlCode);
         return ((DevCtrlPtr)(gOriginalDispatchFunctionArray[IRP_MJ_DEVICE_CONTROL]))(DeviceObject, Irp);
