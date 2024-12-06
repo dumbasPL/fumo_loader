@@ -79,7 +79,7 @@ int disable_spyware() {
                 continue;
             
             auto message = std::format(
-                L"Fund potentially problematic Anti-Cheat service:\n{} ({})\nDisable automatically?",
+                L"Found potentially problematic Anti-Cheat service:\n{} ({})\nDisable automatically?",
                 service.lpDisplayName, service.lpServiceName
             );
             int response = MessageBoxW(NULL, message.c_str(), L"Invasive Anti-Cheat is running", MB_YESNOCANCEL | MB_ICONWARNING | MB_SYSTEMMODAL);
