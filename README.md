@@ -45,7 +45,7 @@ All-in-one kernel-based DLL injector
 ### Prepare the .fumo file
 
 1. Download the latest release or build it yourself
-2. Drag and drop a DL onto `fumo_encoder.exe`
+2. Drag and drop a DLL onto `fumo_encoder.exe`
   1. Fill out the process name
   2. Fill out what DLL(s) to wait for before injecting
 
@@ -54,7 +54,7 @@ All-in-one kernel-based DLL injector
 1. Drag and drop the generated .fumo file onto `fumo.exe`
 2. Wait for the success notification or error message box
 3. Open the target process
-4. Wait for the target DDL(s) to be loaded
+4. Wait for the target DLL(s) to be loaded
 5. ...
 6. Profit
 
