@@ -40,7 +40,7 @@ CPMAddPackage("gh:SergiusTheBest/FindWDK#master")
 list(APPEND CMAKE_MODULE_PATH "${FindWDK_SOURCE_DIR}/cmake")
 find_package(WDK REQUIRED)
 
-CPMAddPackage("gh:dumbasPL/libKDU@1.4.2")
+CPMAddPackage("gh:dumbasPL/libKDU@1.4.3")
 
 if (FUMO_DEBUG)
     add_compile_definitions(FUMO_DEBUG)
