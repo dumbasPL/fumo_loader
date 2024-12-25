@@ -212,6 +212,7 @@ extern "C" void initial_loader(ULONG_PTR xorKey) {
         }
     }
 
+#ifndef FUMO_DEBUG
     // allocate memory for new executable
     auto new_image_base = (ULONG_PTR)fnVirtualAlloc(nullptr, nt_headers->OptionalHeader.SizeOfImage, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
     if (!new_image_base)
@@ -339,14 +340,18 @@ extern "C" void initial_loader(ULONG_PTR xorKey) {
     }
 
     fnVirtualFree((PVOID)new_image_base, 0, MEM_RELEASE);
+#endif
 
     auto error = map_encrypted_sections(base);
     if (error != ERR_SUCCESS) {
+#ifndef FUMO_DEBUG
         fnCloseHandle(file_handle);
+#endif
         fnExitProcess(error);
         return;
     }
 
+#ifndef FUMO_DEBUG
     disposition_info.DeleteFileW = FALSE;
     if (!fnSetFileInformationByHandle(file_handle, FileDispositionInfo, &disposition_info, sizeof(disposition_info))) {
         fnCloseHandle(file_handle);
@@ -354,5 +359,6 @@ extern "C" void initial_loader(ULONG_PTR xorKey) {
     }
 
     fnCloseHandle(file_handle);
+#endif
     fnExitProcess(0);
 }

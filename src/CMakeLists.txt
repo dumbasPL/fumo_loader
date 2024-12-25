@@ -42,6 +42,10 @@ find_package(WDK REQUIRED)
 
 CPMAddPackage("gh:dumbasPL/libKDU@1.4.2")
 
+if (FUMO_DEBUG)
+    add_compile_definitions(FUMO_DEBUG)
+endif()
+
 add_subdirectory(driver)
 add_subdirectory(driver_interface)
 add_subdirectory(rsource_generator)

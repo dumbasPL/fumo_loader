@@ -18,9 +18,11 @@ int main(HANDLE loader_process) {
         return fumo::error(ERR_STAGE2_FAILED_TO_WAIT_FOR_PROCESS, L"Failed to wait for loader process({}): {}", loader_process_name, wait_result);
     CloseHandle(loader_process);
     
+#ifndef FUMO_DEBUG
     // delete the loader executable
     if (!DeleteFileW(loader_process_name.c_str()))
         return fumo::error(ERR_STAGE2_FAILED_TO_DELETE_LOADER, L"Failed to delete loader executable: {}", loader_process_name);
+#endif
     
     auto driver = fumo::DriverInterface::Open(FUMO_HOOKED_DRIVER_NAME_USER);
     if (!driver)
