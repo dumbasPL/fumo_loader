@@ -13,7 +13,7 @@ All-in-one kernel-based DLL injector
 - No open handles to the target process
 - No new threads in the target process (injects using APCs from the kernel)
 - Compatible with:
-  - Windows 10 20H1 to Windows 11 23H2 (x64) (in theory, only tested on W11 22H2)
+  - Windows 10 20H1 to Windows 11 24H2 (x64) (in theory, only tested on W11 22H2-24H2)
   - Secure boot
   - PatchGuard
   - Driver Signature Enforcement
