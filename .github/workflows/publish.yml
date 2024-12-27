@@ -68,6 +68,7 @@ jobs:
       - name: ZIP embedding tools
         run: |
           7z a -tzip -mx=9 -r embedding_tools.zip fumo_encoder.exe fumo_generator.exe initial_loader.bin stage1.dll
+          chmod +x fumo_encoder fumo_generator
           7z a -tzip -mx=9 -r embedding_tools_linux.zip fumo_encoder fumo_generator initial_loader.bin stage1.dll
 
       - name: Publish release (version tag)
