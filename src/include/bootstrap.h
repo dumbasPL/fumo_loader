@@ -1,9 +1,17 @@
 #pragma once
-#include <Windows.h>
 #include <array>
+#include <cstdint>
 
-__forceinline auto get_bootstrap_shellcode(ULONG_PTR xor_key, ULONG_PTR section_virtual_offset, ULONG section_size) {
-    std::array<BYTE, 67> entrypoint = {
+#if defined(_MSC_VER)
+#define __forceinline __forceinline
+#elif defined(__GNUC__)
+#define __forceinline __attribute__((always_inline)) inline
+#else
+#define __forceinline inline
+#endif
+
+__forceinline auto get_bootstrap_shellcode(uintptr_t xor_key, uintptr_t section_virtual_offset, uint32_t section_size) {
+    std::array<uint8_t, 67> entrypoint = {
         // constants
         0x48, 0xB9, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // mov rcx, 0h - xor_key
         0x48, 0xBA, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // mov rdx, 0h - section_virtual_offset
@@ -29,8 +37,8 @@ __forceinline auto get_bootstrap_shellcode(ULONG_PTR xor_key, ULONG_PTR section_
     };
 
     // update constants
-    *(ULONG_PTR*)&entrypoint[2] = xor_key;
-    *(ULONG_PTR*)&entrypoint[12] = section_virtual_offset;
-    *(ULONG_PTR*)&entrypoint[22] = section_virtual_offset + section_size;
+    *(uintptr_t*)&entrypoint[2] = xor_key;
+    *(uintptr_t*)&entrypoint[12] = section_virtual_offset;
+    *(uintptr_t*)&entrypoint[22] = section_virtual_offset + section_size;
     return entrypoint;
 }

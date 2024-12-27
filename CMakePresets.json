@@ -26,6 +26,19 @@
         "FUMO_DEBUG": "ON",
         "FUMO_DRIVER_DEBUG": "ON"
       }
+    },
+    {
+      "name": "linux-embedding-tools",
+      "binaryDir": "${sourceDir}/build",
+      "generator": "Ninja",
+      "architecture": {
+        "value": "x64",
+        "strategy": "external"
+      },
+      "cacheVariables": {
+        "FUMO_DEBUG": "OFF",
+        "FUMO_DRIVER_DEBUG": "OFF"
+      }
     }
   ],
   "buildPresets": [
@@ -37,6 +50,11 @@
     {
       "name": "Debug",
       "configurePreset": "x64-windows-debug",
+      "configuration": "Release"
+    },
+    {
+      "name": "Linux Embedding Tools",
+      "configurePreset": "linux-embedding-tools",
       "configuration": "Release"
     }
   ]
