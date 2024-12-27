@@ -5,6 +5,7 @@
 #include <iomanip>
 #include <optional>
 #include <random>
+#define VAR_LEN 0
 #include <linuxpe>
 #include <string.h>
 #include "bootstrap.h"
@@ -139,7 +140,7 @@ int main(int argc, char** argv) {
     next_pointer_to_raw_data += get_aligned_size(initial_loader_section_header.size_raw_data, nt_headers.optional_header.file_alignment);
 
     // bootstrap section
-    auto bootstrap_shellcode = get_bootstrap_shellcode(xor_key, initial_loader_section_header.virtual_size, initial_loader_section_header.size_raw_data);
+    auto bootstrap_shellcode = get_bootstrap_shellcode(xor_key, initial_loader_section_header.virtual_address, initial_loader_section_header.size_raw_data);
     win::section_header_t bootstrap_section_header;
     memset(&bootstrap_section_header, 0, sizeof(bootstrap_section_header));
     bootstrap_section_header.name.short_name[0] = 'b'; // bootstrap
@@ -285,27 +286,31 @@ std::vector<uint8_t> generate_resource_section(uint32_t virtual_address) {
         return reinterpret_cast<T*>(&data[offset]);
     };
 
-    auto resource_directory = allocate.operator()<win::rsrc_directory_t>();
-    resource_directory->characteristics = 0;
-    resource_directory->timedate_stamp = 0;
-    resource_directory->version.major = 0;
-    resource_directory->version.minor = 0;
-    resource_directory->num_named_entries = 0;
-    resource_directory->num_id_entries = 1;
+    static_assert(sizeof(win::rsrc_directory_t) == 0x10);
+    static_assert(sizeof(win::rsrc_generic_t) == 0x8);
+    static_assert(sizeof(win::rsrc_data_t) == 0x10);
+
+    auto resource_directory1 = allocate.operator()<win::rsrc_directory_t>();
+    resource_directory1->characteristics = 0;
+    resource_directory1->timedate_stamp = 0;
+    resource_directory1->version.major = 0;
+    resource_directory1->version.minor = 0;
+    resource_directory1->num_named_entries = 0;
+    resource_directory1->num_id_entries = 1;
 
     // manifest resource
-    auto resource_directory_entry = allocate.operator()<win::rsrc_generic_t>();
-    resource_directory_entry->identifier = (uint16_t)win::resource_id::manifest;
-    resource_directory_entry->is_directory = true;
-    resource_directory_entry->offset = data.size();
+    auto resource_directory_entry1 = allocate.operator()<win::rsrc_generic_t>();
+    resource_directory_entry1->identifier = (uint16_t)win::resource_id::manifest;
+    resource_directory_entry1->is_directory = true;
+    resource_directory_entry1->offset = data.size();
 
     auto resource_directory2 = allocate.operator()<win::rsrc_directory_t>();
-    resource_directory->characteristics = 0;
-    resource_directory->timedate_stamp = 0;
-    resource_directory->version.major = 0;
-    resource_directory->version.minor = 0;
-    resource_directory->num_named_entries = 0;
-    resource_directory->num_id_entries = 1;
+    resource_directory2->characteristics = 0;
+    resource_directory2->timedate_stamp = 0;
+    resource_directory2->version.major = 0;
+    resource_directory2->version.minor = 0;
+    resource_directory2->num_named_entries = 0;
+    resource_directory2->num_id_entries = 1;
 
     auto resource_directory_entry2 = allocate.operator()<win::rsrc_generic_t>();
     resource_directory_entry2->identifier = 1;
@@ -313,12 +318,12 @@ std::vector<uint8_t> generate_resource_section(uint32_t virtual_address) {
     resource_directory_entry2->offset = data.size();
 
     auto resource_directory3 = allocate.operator()<win::rsrc_directory_t>();
-    resource_directory->characteristics = 0;
-    resource_directory->timedate_stamp = 0;
-    resource_directory->version.major = 0;
-    resource_directory->version.minor = 0;
-    resource_directory->num_named_entries = 0;
-    resource_directory->num_id_entries = 1;
+    resource_directory3->characteristics = 0;
+    resource_directory3->timedate_stamp = 0;
+    resource_directory3->version.major = 0;
+    resource_directory3->version.minor = 0;
+    resource_directory3->num_named_entries = 0;
+    resource_directory3->num_id_entries = 1;
 
     auto resource_directory_entry3 = allocate.operator()<win::rsrc_generic_t>();
     resource_directory_entry3->identifier = 0x409; // english
