@@ -1,11 +1,10 @@
 #pragma once
+#include "fumo_data_header.h"
 
 // Windows 10 2004/20H1 (19041) or higher
 #define MIN_OS_MAJOR_VERSION 10
 #define MIN_OS_BUILD_NUMBER 19041
 
-#define FUMO_MAGIC 'OMUF'
-#define FUMO_DATA_VERSION 0x00000002
 #define FUMO_DRIVER_VERSION 0x00000003
 #define FUMO_HOOKED_DRIVER_NAME L"\\Driver\\Null"
 #define FUMO_HOOKED_DRIVER_NAME_USER L"\\\\.\\NUL"
@@ -51,16 +50,6 @@ typedef struct _IO_FIND_MODULE_REQUEST_DATA {
 typedef struct _IO_FIND_MODULE_RESPONSE_DATA {
     PVOID Address;
 } IO_FIND_MODULE_RESPONSE_DATA, *PIO_FIND_MODULE_RESPONSE_DATA;
-
-typedef struct _FUMO_DATA_HEADER {
-    DWORD Magic;
-    DWORD Version;
-    DWORDLONG XorKey;
-    DWORD SettingsSize;
-    DWORD DataSize;
-    DWORD CompressedDataSize;
-    DWORD DecompressedDataSize;
-} FUMO_DATA_HEADER, *PFUMO_DATA_HEADER;
 
 typedef struct _FUMO_EMBEDDED_DATA {
     PVOID Data;

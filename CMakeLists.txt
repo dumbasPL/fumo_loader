@@ -17,4 +17,8 @@ include(cmake/CPM.cmake)
 set(FUMO_DRIVER_DEBUG OFF CACHE BOOL "Enable driver debug logs/force reload")
 set(FUMO_DEBUG OFF CACHE BOOL "Disable creating new executables")
 
+if (FUMO_DEBUG)
+    add_compile_definitions(FUMO_DEBUG)
+endif()
+
 add_subdirectory(src)

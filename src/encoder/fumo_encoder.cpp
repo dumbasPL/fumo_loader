@@ -1,4 +1,3 @@
-#include <Windows.h>
 #include <iostream>
 #include <fstream>
 #include <vector>
@@ -7,8 +6,8 @@
 #include <filesystem>
 #include <stdint.h>
 #include <ctime>
-#include <fomo_common.h>
-#include <util.h>
+#include <random>
+#include <fumo_data_header.h>
 #include <lz4.h>
 
 int main(int argc, char** argv) {
@@ -74,10 +73,13 @@ int main(int argc, char** argv) {
     compressed_data.resize(compressed_size);
 
     // generate xor key
-    std::srand(std::time(nullptr));
-    uint64_t xor_key = 0;
-    for (int i = 0; i < 8; i++)
-        xor_key |= (std::rand() % 256) << (i * 8);
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<unsigned long long> dis(
+        std::numeric_limits<std::uint64_t>::min(),
+        std::numeric_limits<std::uint64_t>::max()
+    );
+    uint64_t xor_key = dis(gen);
 
     // pad to 8 bytes
     int padding = 8 - (compressed_data.size() % 8);
