@@ -6,7 +6,7 @@ endif()
 CPMAddPackage(
     NAME lz4
     GITHUB_REPOSITORY lz4/lz4
-    VERSION 1.9.4
+    VERSION 1.10.0
     SOURCE_SUBDIR build/cmake
     OPTIONS
         "LZ4_BUILD_CLI OFF"
