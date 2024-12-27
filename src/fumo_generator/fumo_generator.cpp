@@ -257,11 +257,11 @@ std::optional<std::vector<uint8_t>> read_file(std::string path) {
 
 template <typename E>
 void randomize_section_name(win::section_header_t* section_header, E& engine) {
-    std::uniform_int_distribution<char> dis('a', 'z');
+    std::uniform_int_distribution<int> dis('a', 'z');
 
     // start at 1 to skip our "magic" section type indicator
     for (int j = 1; j < 8; j++)
-        section_header->name.short_name[j] = dis(engine);
+        section_header->name.short_name[j] = (char)dis(engine);
 }
 
 uint32_t get_aligned_size(uint32_t size, uint32_t alignment) {
