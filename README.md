@@ -37,8 +37,8 @@ All-in-one kernel-based DLL injector
 - (Currently) it does not clean any traces of the vulnerable driver
   - Reboot before loading any "decent" anti-cheat if you don't feel like being insta banned
 - The target process needs to have a thread that we can schedule APCs on (this is usually not an issue outside of very simple hello world programs that only have one thread)
-- You might get random DEP violations because memory above 0x7FFF'FFFFFFFF is technically not valid user-mode memory (at least as far as Windows APIs are concerned, your CPU doesn't care and will happily execute it, that's the whole idea behind this loader)
-  - You will have to register an exception handler in your DLL that will catch the exception and return `EXCEPTION_CONTINUE_EXECUTION` whenever it encounters a DEP violation above 0x7FFF'FFFFFFFF
+- You might get random DEP violations because memory above 0x7FFF'FFFEFFFF is technically not valid user-mode memory (at least as far as Windows APIs are concerned, your CPU doesn't care and will happily execute it, that's the whole idea behind this loader)
+  - You will have to register an exception handler in your DLL that will catch the exception and return `EXCEPTION_CONTINUE_EXECUTION` whenever it encounters a DEP violation above 0x7FFF'FFFEFFFF
 
 ## Usage
 

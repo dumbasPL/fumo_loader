@@ -9,21 +9,40 @@ using fnDllMain = BOOL(WINAPI*)(HMODULE hModule, DWORD dwReason, LPVOID lpReserv
 
 typedef struct _MANUAL_MAPPING_DATA {
     PVOID ImageBase;
+    PVOID VirtualProtectStub;
     fnLdrLoadDll LdrLoadDll;
     fnLdrGetProcedureAddress LdrGetProcedureAddress;
     fnRtlAnsiStringToUnicodeString RtlAnsiStringToUnicodeString;
 } MANUAL_MAPPING_DATA, *PMANUAL_MAPPING_DATA;
 
-MANUAL_MAPPING_DATA GetManualMappingData(PVOID pImageBase) {
+MANUAL_MAPPING_DATA GetManualMappingData(PVOID pImageBase, PVOID pVirtualProtectStub) {
     HMODULE hNtdll = GetModuleHandleW(L"ntdll.dll");
 
     MANUAL_MAPPING_DATA data = {0};
     data.ImageBase = pImageBase;
+    data.VirtualProtectStub = pVirtualProtectStub;
     data.LdrLoadDll = (fnLdrLoadDll)GetProcAddress(hNtdll, "LdrLoadDll");
     data.LdrGetProcedureAddress = (fnLdrGetProcedureAddress)GetProcAddress(hNtdll, "LdrGetProcedureAddress");
     data.RtlAnsiStringToUnicodeString = (fnRtlAnsiStringToUnicodeString)GetProcAddress(hNtdll, "RtlAnsiStringToUnicodeString");
     return data;
 }
+
+std::array<uint8_t, 34> virtual_protect_stub = {
+    // check if lpAddress is above 0x7FFFFFFEFFFF
+    0x48, 0x89, 0xC8,                                           // mov rax, rcx
+    0x48, 0xC1, 0xE8, 0x10,                                     // shr rax, 0x10
+    0x48, 0x3D, 0xFE, 0xFF, 0xFF, 0x7F,                         // cmp rax, 0x7ffffffe
+    0x76, 0x06,                                                 // jbe .call_original
+    // return STATUS_SUCCESS
+    0xB8, 0x01, 0x00, 0x00, 0x00,                               // mov eax, 0x1
+    0xC3,                                                       // ret
+    // .call_original
+    0x48, 0xB8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // movabs rax, 0x0 - original VirtualProtect
+    0x48, 0xFF, 0xE0                                            // rex.W jmp rax
+};
+constexpr ULONG_PTR virtual_protect_stub_orig_addr_off = 23;
+
+#define tolower(c) ((c >= 'A' && c <= 'Z') ? c + 32 : c)
 
 DWORD Shellcode(PMANUAL_MAPPING_DATA pMmData) {
     // resolve imports
@@ -36,6 +55,18 @@ DWORD Shellcode(PMANUAL_MAPPING_DATA pMmData) {
         USHORT module_name_length = 0;
         while (module_name[module_name_length] != 0)
             module_name_length++;
+
+        BOOL is_kernel32 = FALSE;
+        CHAR kernel32[] = {'k', 'e', 'r', 'n', 'e', 'l', '3', '2', '.', 'd', 'l', 'l'};
+        if (module_name_length == sizeof(kernel32)) {
+            is_kernel32 = TRUE;
+            for (int i = 0; i < sizeof(kernel32); i++) {
+                if (tolower(module_name[i]) != kernel32[i]) {
+                    is_kernel32 = FALSE;
+                    break;
+                }
+            }
+        }
 
         ANSI_STRING ansi_module_name = {0};
         ansi_module_name.Buffer = module_name;
@@ -64,13 +95,31 @@ DWORD Shellcode(PMANUAL_MAPPING_DATA pMmData) {
                 USHORT function_name_length = 0;
                 while (function_name[function_name_length] != 0)
                     function_name_length++;
-
+                
+                CHAR virtual_protect[] = {'V', 'i', 'r', 't', 'u', 'a', 'l', 'P', 'r', 'o', 't', 'e', 'c', 't'};
+                BOOL is_virtual_protect = FALSE;
+                if (is_kernel32 && function_name_length == sizeof(virtual_protect)) {
+                    is_virtual_protect = TRUE;
+                    for (int i = 0; i < sizeof(virtual_protect); i++) {
+                        if (function_name[i] != virtual_protect[i]) {
+                            is_virtual_protect = FALSE;
+                            break;
+                        }
+                    }
+                }
+                
                 ANSI_STRING ansi_function_name = {0};
                 ansi_function_name.Buffer = function_name;
                 ansi_function_name.Length = function_name_length;
                 ansi_function_name.MaximumLength = function_name_length + 1;
 
                 pMmData->LdrGetProcedureAddress(module_handle, &ansi_function_name, 0, &function_address);
+
+                if (is_virtual_protect) {
+                    auto virtual_protect_stub = (PBYTE)pMmData->VirtualProtectStub;
+                    *(PVOID*)(virtual_protect_stub + virtual_protect_stub_orig_addr_off) = function_address;
+                    function_address = virtual_protect_stub;
+                }
             }
 
             first_thunk->u1.Function = (ULONG_PTR)function_address;
@@ -107,9 +156,10 @@ int MapImage(fumo::DriverInterface* pDriver, ULONG pid, PVOID pImage) {
         return fumo::error(ERR_STAGE2_INVALID_PE_HEADER, L"Invalid PE header");
 
     ULONG size_of_shellcode = (ULONG)((SIZE_T)Shellcode_End - (SIZE_T)Shellcode);
+    ULONG size_of_virtual_protect_stub = virtual_protect_stub.size();
     ULONG size_of_shellcode_data = sizeof(MANUAL_MAPPING_DATA);
     auto size_of_image = nt_headers->OptionalHeader.SizeOfImage;
-    auto size_of_mapping = size_of_image + size_of_shellcode + size_of_shellcode_data;
+    auto size_of_mapping = size_of_image + size_of_shellcode + size_of_virtual_protect_stub + size_of_shellcode_data;
 
     auto kernel_image = pDriver->AllocateKernelMemory(size_of_mapping);
     if (!kernel_image)
@@ -155,10 +205,14 @@ int MapImage(fumo::DriverInterface* pDriver, ULONG pid, PVOID pImage) {
     auto shellcode_addr = (PVOID)((ULONG_PTR)kernel_image + size_of_image);
     memcpy(shellcode_addr, Shellcode, size_of_shellcode);
 
+    // write the virtual protect stub
+    auto virtual_protect_stub_addr = (PVOID)((ULONG_PTR)shellcode_addr + size_of_shellcode);
+    memcpy(virtual_protect_stub_addr, virtual_protect_stub.data(), size_of_virtual_protect_stub);
+
     // write the manual mapping data
-    auto ManualMappingData = GetManualMappingData(kernel_image);
-    auto manual_mapping_data_addr = (PMANUAL_MAPPING_DATA)((ULONG_PTR)shellcode_addr + size_of_shellcode);
-    memcpy(manual_mapping_data_addr, &ManualMappingData, size_of_shellcode_data);
+    auto manual_mapping_data = GetManualMappingData(kernel_image, virtual_protect_stub_addr);
+    auto manual_mapping_data_addr = (PMANUAL_MAPPING_DATA)((ULONG_PTR)virtual_protect_stub_addr + size_of_virtual_protect_stub);
+    memcpy(manual_mapping_data_addr, &manual_mapping_data, size_of_shellcode_data);
 
     if (!pDriver->ExposeKernelMemory(pid, kernel_image, size_of_mapping))
         return fumo::error(ERR_STAGE2_FAILED_TO_EXPOSE_MEMORY, L"Failed to expose kernel memory");

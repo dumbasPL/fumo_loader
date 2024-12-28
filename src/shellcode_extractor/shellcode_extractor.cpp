@@ -5,9 +5,8 @@
 #include <vector>
 #include <iomanip>
 
-// purpose: extract shellcode from object file given symbol name and emit C++ code
-// usage: shellcode_extractor.exe <object_file> <symbol_name> [output_file]
-// reason for existence: Why manually copy it every time when you shellcode_extractorcan 
+// purpose: extract shellcode from object file given symbol name and save to disk
+// reason for existence: Why manually copy it every time when you can
 //                       overengineer an automatic extractor/encoder?
 // references: https://learn.microsoft.com/en-us/windows/win32/debug/pe-format
 
