@@ -14,7 +14,7 @@ CPMAddPackage(
 )
 find_package(lz4 REQUIRED)
 
-CPMAddPackage("gh:dumbasPL/linux-pe#master")
+CPMAddPackage("gh:can1357/linux-pe#master")
 find_package(linux-pe REQUIRED)
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
