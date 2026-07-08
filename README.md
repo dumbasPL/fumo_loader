@@ -108,10 +108,10 @@ Or use the CMake integration built into your IDE of choice
 
 ## ~~Number of Pasters~~ Star History
 
-<a href="https://star-history.com/#dumbasPL/fumo_loader&Date">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=dumbasPL/fumo_loader&type=Date&theme=dark" />
-    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=dumbasPL/fumo_loader&type=Date" />
-    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=dumbasPL/fumo_loader&type=Date" />
-  </picture>
+<a href="https://www.star-history.com/?repos=dumbasPL%2Ffumo_loader&type=date&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=dumbasPL/fumo_loader&type=date&theme=dark&legend=top-left&sealed_token=tV6-B3pAOXL_M4j9YYUImqlMg0NFKw-az85X1yp2hQ48taQAXGeGfsaG4Kb6vNDUxt1iFQ_DHIX4jiBY1Wh6a9LiJQfcTY7eJmMR-ktEhB4aKzpT19XLc3EONKv-qpN5Bb-ibUqCHpN4iGz54Tk2Z0-yYzM6kSJpDWDMJHiqthUzPX5291bNzjKM7cZM" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=dumbasPL/fumo_loader&type=date&legend=top-left&sealed_token=tV6-B3pAOXL_M4j9YYUImqlMg0NFKw-az85X1yp2hQ48taQAXGeGfsaG4Kb6vNDUxt1iFQ_DHIX4jiBY1Wh6a9LiJQfcTY7eJmMR-ktEhB4aKzpT19XLc3EONKv-qpN5Bb-ibUqCHpN4iGz54Tk2Z0-yYzM6kSJpDWDMJHiqthUzPX5291bNzjKM7cZM" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=dumbasPL/fumo_loader&type=date&legend=top-left&sealed_token=tV6-B3pAOXL_M4j9YYUImqlMg0NFKw-az85X1yp2hQ48taQAXGeGfsaG4Kb6vNDUxt1iFQ_DHIX4jiBY1Wh6a9LiJQfcTY7eJmMR-ktEhB4aKzpT19XLc3EONKv-qpN5Bb-ibUqCHpN4iGz54Tk2Z0-yYzM6kSJpDWDMJHiqthUzPX5291bNzjKM7cZM" />
+ </picture>
 </a>
